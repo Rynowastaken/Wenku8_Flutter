@@ -509,6 +509,7 @@ lib/library_state.dart
 lib/library_sync_conflicts_page.dart
 lib/library_toolbar.dart
 lib/library_workspace.dart
+lib/linovelib_account.dart
 lib/linovelib_client.dart
 lib/linovelib_ids.dart
 lib/linovelib_parser.dart

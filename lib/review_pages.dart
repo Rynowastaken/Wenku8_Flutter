@@ -183,6 +183,7 @@ class _WenkuReviewsPageState extends State<WenkuReviewsPage> {
       WenkuReviewFeed(
         id: widget.thread?.id ?? widget.novel.id,
         replies: widget.thread != null,
+        read: widget.account.reviewReader,
       );
   @override
   void initState() {

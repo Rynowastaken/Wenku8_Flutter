@@ -18,15 +18,17 @@ class LinovelibException extends FormatException {
 }
 
 class _CachedDocument {
-  const _CachedDocument(this.document, this.at);
+  const _CachedDocument(this.uri, this.document, this.at);
+  final Uri uri;
   final Document document;
   final DateTime at;
 }
 
-/// Small, polite HTTP boundary for the Linovelib pages and image hosts.
+/// HTTP boundary for Linovelib pages, authenticated sessions, and image hosts.
 ///
-/// Pages are cached briefly and identical in-flight requests are shared. The
-/// client never stores cookies or credentials because the source is read-only.
+/// Pages are cached briefly and identical in-flight GET requests are shared.
+/// Session cookies are scoped strictly to Linovelib hosts and never sent to
+/// third-party image CDNs or web search endpoints.
 class LinovelibClient {
   LinovelibClient({Uri? baseUri, HttpClient? httpClient})
     : baseUri = baseUri ?? Uri.parse(origin),
@@ -61,8 +63,27 @@ class LinovelibClient {
   final Uri baseUri;
   final HttpClient _http;
   final _documents = <String, _CachedDocument>{};
-  final _pending = <String, Future<Document>>{};
+  final _pending = <String, Future<({Uri uri, Document document})>>{};
+  final _cookies = <String, String>{};
+  void Function(Map<String, String> cookies)? onCookiesChanged;
   DateTime _nextRequestAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  Map<String, String> get cookies => Map.unmodifiable(_cookies);
+
+  void setCookies(Map<String, String> cookies, {bool notify = false}) {
+    _cookies
+      ..clear()
+      ..addAll(cookies);
+    if (notify) onCookiesChanged?.call(this.cookies);
+  }
+
+  void clearCookies({bool notify = true}) {
+    if (_cookies.isEmpty) return;
+    _cookies.clear();
+    if (notify) onCookiesChanged?.call(const {});
+  }
+
+  void clearDocumentCache() => _documents.clear();
 
   Uri resolve(String href) {
     final parsed = Uri.tryParse(href.trim());
@@ -74,7 +95,14 @@ class LinovelibClient {
     String pathOrUrl, {
     bool refresh = false,
     Duration ttl = _pageTtl,
-  }) => documentUri(
+  }) async =>
+      (await documentWithUri(pathOrUrl, refresh: refresh, ttl: ttl)).document;
+
+  Future<({Uri uri, Document document})> documentWithUri(
+    String pathOrUrl, {
+    bool refresh = false,
+    Duration ttl = _pageTtl,
+  }) => documentUriWithUrl(
     pathOrUrl.contains('://') ? Uri.parse(pathOrUrl) : resolve(pathOrUrl),
     refresh: refresh,
     ttl: ttl,
@@ -84,13 +112,19 @@ class LinovelibClient {
     Uri uri, {
     bool refresh = false,
     Duration ttl = _pageTtl,
+  }) async => (await documentUriWithUrl(uri, refresh: refresh, ttl: ttl)).document;
+
+  Future<({Uri uri, Document document})> documentUriWithUrl(
+    Uri uri, {
+    bool refresh = false,
+    Duration ttl = _pageTtl,
   }) {
     final key = _normalize(uri);
     final cached = _documents[key];
     if (!refresh &&
         cached != null &&
         DateTime.now().difference(cached.at) < ttl) {
-      return Future.value(cached.document);
+      return Future.value((uri: cached.uri, document: cached.document));
     }
     final pending = _pending[key];
     if (pending != null) return pending;
@@ -101,22 +135,51 @@ class LinovelibClient {
     });
   }
 
-  Future<Document> _fetchDocument(Uri uri) async {
-    final bytes = await _request(
+  Future<({Uri uri, Document document})> _fetchDocument(Uri uri) async {
+    final result = await _request(
       uri,
       accept:
           'text/html,application/xhtml+xml,application/xml;q=0.9,'
           'image/avif,image/webp,*/*;q=0.8',
       limit: _maxPageBytes,
     );
-    final html = utf8.decode(bytes, allowMalformed: true);
+    final html = utf8.decode(result.bytes, allowMalformed: true);
     final document = html_parser.parse(html);
     final key = _normalize(uri);
-    _documents[key] = _CachedDocument(document, DateTime.now());
+    _documents[key] = _CachedDocument(result.uri, document, DateTime.now());
     while (_documents.length > _maxPages) {
       _documents.remove(_documents.keys.first);
     }
-    return document;
+    return (uri: result.uri, document: document);
+  }
+
+  Future<({Uri uri, Document document, String text})> postForm(
+    String pathOrUrl,
+    Map<String, String> fields, {
+    String? referer,
+  }) async {
+    final uri = pathOrUrl.contains('://')
+        ? Uri.parse(pathOrUrl)
+        : resolve(pathOrUrl);
+    final body = fields.entries
+        .map(
+          (e) =>
+              '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}',
+        )
+        .join('&');
+    final result = await _request(
+      uri,
+      method: 'POST',
+      bodyBytes: utf8.encode(body),
+      contentType: 'application/x-www-form-urlencoded; charset=utf-8',
+      accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      referer: referer ?? origin,
+      limit: _maxPageBytes,
+    );
+    clearDocumentCache();
+    final text = utf8.decode(result.bytes, allowMalformed: true);
+    return (uri: result.uri, document: html_parser.parse(text), text: text);
   }
 
   Future<Uint8List> image(String url, {String? referer}) async {
@@ -130,17 +193,44 @@ class LinovelibClient {
       throw const FormatException('插图地址格式有误');
     }
     final normalized = uri.replace(scheme: 'https', port: 443);
-    return _request(
+    final result = await _request(
       normalized,
       accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
       referer: referer ?? origin,
       limit: _maxImageBytes,
       pace: false,
     );
+    return result.bytes;
   }
 
-  Future<Uint8List> _request(
+  bool _isSessionHost(Uri uri) {
+    final host = uri.host.toLowerCase();
+    return host == 'linovelib.com' || host.endsWith('.linovelib.com');
+  }
+
+  void _captureCookies(Uri uri, HttpClientResponse response) {
+    if (!_isSessionHost(uri) || response.cookies.isEmpty) return;
+    var changed = false;
+    for (final cookie in response.cookies) {
+      final deleted =
+          cookie.value.isEmpty ||
+          cookie.value.toLowerCase() == 'deleted' ||
+          cookie.maxAge == 0;
+      if (deleted) {
+        if (_cookies.remove(cookie.name) != null) changed = true;
+      } else if (_cookies[cookie.name] != cookie.value) {
+        _cookies[cookie.name] = cookie.value;
+        changed = true;
+      }
+    }
+    if (changed) onCookiesChanged?.call(cookies);
+  }
+
+  Future<({Uri uri, Uint8List bytes})> _request(
     Uri uri, {
+    String method = 'GET',
+    List<int>? bodyBytes,
+    String? contentType,
     required String accept,
     required int limit,
     String? referer,
@@ -149,50 +239,83 @@ class LinovelibClient {
     for (var attempt = 0; ; attempt++) {
       HttpClientResponse? response;
       try {
-        if (pace) await _pace(uri);
-        final request = await _http.getUrl(uri);
-        request.followRedirects = true;
-        request.maxRedirects = 5;
-        request.headers.set(
-          HttpHeaders.userAgentHeader,
-          uri.host == 'search.brave.com' ? _desktopUserAgent : userAgent,
-        );
-        request.headers.set(HttpHeaders.acceptHeader, accept);
-        request.headers.set(HttpHeaders.acceptLanguageHeader, 'zh-TW,zh;q=0.9');
-        if (referer != null) {
-          request.headers.set(HttpHeaders.refererHeader, referer);
-        } else if (uri.host == 'tw.linovelib.com') {
-          request.headers.set(HttpHeaders.refererHeader, origin);
-        }
-        response = await request.close().timeout(_requestTimeout);
-        final status = response.statusCode;
-        if (status == 429 && attempt < 1) {
-          final delay = _retryAfter(response) ?? const Duration(seconds: 5);
-          final until = DateTime.now().add(delay);
-          if (_nextRequestAt.isBefore(until)) _nextRequestAt = until;
-          await response.drain<void>();
-          await Future<void>.delayed(delay);
-          continue;
-        }
-        if (status < 200 || status >= 300) {
-          await response.drain<void>();
-          throw LinovelibException(_statusMessage(status), statusCode: status);
-        }
-        final declared = response.contentLength;
-        if (declared > limit) {
-          await response.drain<void>();
-          throw const LinovelibException('网站返回的内容过大');
-        }
-        final builder = BytesBuilder(copy: false);
-        await for (final chunk in response.timeout(_requestTimeout)) {
-          builder.add(chunk);
-          if (builder.length > limit) {
+        var currentUri = uri;
+        var currentMethod = method;
+        var currentBody = bodyBytes;
+        var currentReferer = referer;
+        for (var hops = 0; ; hops++) {
+          if (pace) await _pace(currentUri);
+          final request = await _http.openUrl(currentMethod, currentUri);
+          request.followRedirects = false;
+          request.headers.set(
+            HttpHeaders.userAgentHeader,
+            currentUri.host == 'search.brave.com' ? _desktopUserAgent : userAgent,
+          );
+          request.headers.set(HttpHeaders.acceptHeader, accept);
+          request.headers.set(HttpHeaders.acceptLanguageHeader, 'zh-TW,zh;q=0.9');
+          if (currentReferer != null) {
+            request.headers.set(HttpHeaders.refererHeader, currentReferer);
+          } else if (currentUri.host == 'tw.linovelib.com') {
+            request.headers.set(HttpHeaders.refererHeader, origin);
+          }
+          if (_isSessionHost(currentUri) && _cookies.isNotEmpty) {
+            request.headers.set(
+              HttpHeaders.cookieHeader,
+              _cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
+            );
+          }
+          if (currentBody != null && currentMethod == 'POST') {
+            if (contentType != null) {
+              request.headers.set(HttpHeaders.contentTypeHeader, contentType);
+            }
+            request.contentLength = currentBody.length;
+            request.add(currentBody);
+          }
+          response = await request.close().timeout(_requestTimeout);
+          _captureCookies(currentUri, response);
+          final status = response.statusCode;
+          if (const {301, 302, 303, 307, 308}.contains(status)) {
+            final location = response.headers.value(HttpHeaders.locationHeader);
+            await response.drain<void>();
+            if (location == null || location.isEmpty || hops >= 5) {
+              throw LinovelibException(_statusMessage(status), statusCode: status);
+            }
+            currentReferer = currentUri.toString();
+            currentUri = currentUri.resolve(location);
+            if (status != 307 && status != 308) {
+              currentMethod = 'GET';
+              currentBody = null;
+            }
+            continue;
+          }
+          if (status == 429 && attempt < 1) {
+            final delay = _retryAfter(response) ?? const Duration(seconds: 5);
+            final until = DateTime.now().add(delay);
+            if (_nextRequestAt.isBefore(until)) _nextRequestAt = until;
+            await response.drain<void>();
+            await Future<void>.delayed(delay);
+            break;
+          }
+          if (status < 200 || status >= 300) {
+            await response.drain<void>();
+            throw LinovelibException(_statusMessage(status), statusCode: status);
+          }
+          final declared = response.contentLength;
+          if (declared > limit) {
+            await response.drain<void>();
             throw const LinovelibException('网站返回的内容过大');
           }
+          final builder = BytesBuilder(copy: false);
+          await for (final chunk in response.timeout(_requestTimeout)) {
+            builder.add(chunk);
+            if (builder.length > limit) {
+              throw const LinovelibException('网站返回的内容过大');
+            }
+          }
+          final bytes = builder.takeBytes();
+          if (bytes.isEmpty) throw const LinovelibException('网站返回了空内容');
+          return (uri: currentUri, bytes: bytes);
         }
-        final bytes = builder.takeBytes();
-        if (bytes.isEmpty) throw const LinovelibException('网站返回了空内容');
-        return bytes;
       } on LinovelibException {
         rethrow;
       } on TimeoutException {

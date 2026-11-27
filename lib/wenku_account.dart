@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'library_state.dart';
 import 'online_component.dart';
+import 'wenku_reviews.dart' show ReviewPageReader;
 import 'wenku_shelf_sync.dart' show CloudShelfPlan;
 
 class WenkuProfile {
@@ -47,6 +48,7 @@ class WenkuAccount extends ChangeNotifier {
   int? syncedAt;
   int get sessionRevision => 0;
   int get publicationRevision => 0;
+  ReviewPageReader? get reviewReader => null;
   static String describeError(Object error) =>
       error is OnlineComponentUnavailable ||
           error is OnlineAuthenticationRequired

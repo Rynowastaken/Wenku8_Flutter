@@ -255,8 +255,8 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
         final account = widget.account;
         final profile = account.profile;
         return ArchiveFeaturePage(
-          title: '文库账号',
-          code: 'ACCOUNT / PERSONAL ARCHIVE',
+          title: '哔哩轻小说账号',
+          code: 'ACCOUNT / LINOVELIB',
           child: LoadedContentSequence(
             generation: (account.authenticated, profile?.id),
             child: ListView(
@@ -268,7 +268,7 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                   child: AppText(
                     account.authenticated
                         ? profile?.displayName ?? '已登录'
-                        : '连接你的文库',
+                        : '连接你的哔哩轻小说',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w600,
@@ -279,7 +279,7 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                 AppText(
                   account.authenticated
                       ? '登录后自动同步收藏，本机阅读进度与原书保留。'
-                      : '使用原版文库账号。未登录时仍可搜索、收藏到本机和离线阅读。',
+                      : '使用 tw.linovelib.com 账号登录。未登录时仍可搜索、收藏到本机和离线阅读。',
                 ),
                 const SizedBox(height: 24),
                 if (!account.authenticated)
@@ -321,7 +321,7 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                           autofillHints: const [AutofillHints.password],
                           smartDashesType: SmartDashesType.disabled,
                           smartQuotesType: SmartQuotesType.disabled,
-                          maxLength: 30,
+                          maxLength: 64,
                           onSubmitted: (_) => _login(),
                           decoration: InputDecoration(
                             labelText: appText(context, '密码'),

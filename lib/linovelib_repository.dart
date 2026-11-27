@@ -41,6 +41,7 @@ class LinovelibRepository extends NovelRepository
     : _client = client ?? LinovelibClient();
 
   final LinovelibClient _client;
+  LinovelibClient get client => _client;
   final _details = <int, _Cached<Novel>>{};
   final _catalogues = <int, _Cached<List<NovelChapter>>>{};
   final _contents = <(int, int), _Cached<String>>{};

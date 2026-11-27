@@ -15,6 +15,7 @@ import 'catalog.dart';
 import 'legacy_cover.dart';
 import 'legacy_transport.dart';
 import 'legacy_wenku_repository.dart';
+import 'linovelib_account.dart';
 import 'linovelib_repository.dart';
 import 'library_state.dart';
 import 'local_platform.dart';
@@ -37,6 +38,7 @@ import 'updates/ios_update_platform.dart';
 import 'updates/harmony_update_platform.dart';
 import 'updates/update_page.dart';
 import 'wenku_features.dart';
+import 'wenku_shelf_sync.dart';
 import 'publication_catalog.dart';
 import 'lan_reading_sync.dart';
 import 'lan_handoff_widgets.dart';
@@ -98,9 +100,29 @@ Future<void> main() async {
   if (repository is OfflineNovelRepository && repository.local != null) {
     await reconcileLocalSeries(repository.local!, state);
   }
-  // Linovelib is a read-only public catalogue without an account or cloud
-  // shelf. Keep the Wenku account/community scope closed in this build.
-  const features = null;
+  final preferences = await SharedPreferences.getInstance();
+  final linovelibAccount = linovelib != null
+      ? LinovelibAccount(client: linovelib.client, preferences: preferences)
+      : null;
+  final WenkuShelfSync? shelfSync;
+  if (linovelibAccount != null) {
+    unawaited(linovelibAccount.initialize());
+    shelfSync = WenkuShelfSync(
+      account: linovelibAccount,
+      library: state,
+      preferences: preferences,
+      network: network,
+    )..start();
+  } else {
+    shelfSync = null;
+  }
+  final features = linovelibAccount != null && linovelib != null
+      ? WenkuFeatures(
+          account: linovelibAccount,
+          publications: linovelib,
+          shelfSync: shelfSync,
+        )
+      : null;
   final customSpeech = LocalPlatform.listening ? CustomSpeechSettings() : null;
   await customSpeech?.load();
   final listening = LocalPlatform.listening
@@ -111,7 +133,7 @@ Future<void> main() async {
             network: network,
           ),
           customSpeech: customSpeech,
-          store: ListeningStore(await SharedPreferences.getInstance()),
+          store: ListeningStore(preferences),
           outputFactory: createListeningOutput,
         )
       : null;
@@ -124,17 +146,17 @@ Future<void> main() async {
       listening: listening,
       network: network,
       updates: defaultTargetPlatform == TargetPlatform.android
-          ? AppUpdates(preferences: await SharedPreferences.getInstance())
+          ? AppUpdates(preferences: preferences)
           : LocalPlatform.ios
           ? AppUpdates(
-              preferences: await SharedPreferences.getInstance(),
+              preferences: preferences,
               platform: IOSUpdatePlatform(),
               packageUpdates: false,
               notificationAssetExtension: '.ipa',
             )
           : LocalPlatform.harmony
           ? AppUpdates(
-              preferences: await SharedPreferences.getInstance(),
+              preferences: preferences,
               platform: HarmonyUpdatePlatform(),
               packageUpdates: false,
               notificationAssetExtension: '.hap',

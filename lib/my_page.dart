@@ -124,8 +124,8 @@ class MyPage extends StatelessWidget {
                               children: [
                                 AppText(
                                   account.authenticated
-                                      ? profile?.displayName ?? '文库账号'
-                                      : '登录文库账号',
+                                      ? profile?.displayName ?? '哔哩轻小说账号'
+                                      : '登录哔哩轻小说',
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w600,
@@ -143,9 +143,9 @@ class MyPage extends StatelessWidget {
                                                   : features.shelfSync!.error != null
                                                   ? '\n书架待同步 · ${features.shelfSync!.error}'
                                                   : features.shelfSync!.syncedAt != null
-                                                  ? '\n书架已与文库同步'
+                                                  ? '\n书架已与云端同步'
                                                   : ''}'
-                                      : '文库账号 · 云书架与每日签到',
+                                      : '哔哩轻小说账号 · 云书架与作品互动',
                                   style: TextStyle(
                                     fontSize: 12,
                                     height: 1.6,

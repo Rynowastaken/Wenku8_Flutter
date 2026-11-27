@@ -12,8 +12,8 @@ const releaseReadingNotice =
 const _freeNotice = '不出售会员、激活码或功能解锁服务。任何以本项目或开发者名义收费、募捐、索要赞助的行为均与本项目无关，请勿付款。';
 const _downloadNotice = '请通过项目仓库或 App 内更新获取安装包；升级前请备份原书和阅读记录。';
 const _sourceSwitch =
-    '在线书源已切换为哔哩轻小说（tw.linovelib.com）：支持发现、分类、详情、目录、正文、插图与离线缓存；搜索使用随包书目快照。';
-const _sourceLimits = '本分支不包含文库账号、云书架、评论或签到；本地书籍与已缓存章节保留，旧书源在线条目需重新搜索添加。';
+    '在线书源已切换为哔哩轻小说（tw.linovelib.com）：支持发现、分类、详情、目录、正文、插图、账号登录、云书架双向同步、推荐与书评查看。';
+const _sourceLimits = '本地书籍与已缓存章节保留；旧书源在线条目需重新搜索添加，与上游仅兼容本地书籍互通。';
 const _upstreamCompat =
     '跨端兼容性：可与上游版本进行局域网配对并同步/互传本地书籍，也可互通本地备份（.wenku8sync / WebDAV / S3）；在线书目（LN-）与在线局域网续读仅在 LinoBunko 间互通。';
 const _imports = '修复 iOS 背景、字体和本地书籍的文件选择；保留默认关联原文件与显式复制导入，修复重启后书架列表恢复异常。';
