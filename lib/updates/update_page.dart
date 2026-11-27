@@ -455,7 +455,7 @@ class AppUpdatePage extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
             ),
             title: const ArchiveRouteTitle(
-              title: '关于哔哩轻小说',
+              title: '关于 LinoBunko',
               code: 'SYSTEM / ABOUT',
             ),
           ),
@@ -468,16 +468,16 @@ class AppUpdatePage extends StatelessWidget {
               padding.bottom + 32,
             ),
             children: [
-              const ArchiveSection(title: '哔哩轻小说', code: 'LINOVELIB / FLUTTER'),
-              const SizedBox(height: 12),
+              const ArchiveSection(title: 'LinoBunko', code: 'LINOVELIB / FLUTTER'),
+              const SizedBox(height: 10),
               AppText(
-                '当前版本 $version · 构建 $build',
+                '当前版本 $version ($build)',
                 key: const ValueKey('installed-app-version'),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               if (service != null && service.checksEnabled) ...[
                 ContentPanel(
                   child: Column(
@@ -508,17 +508,6 @@ class AppUpdatePage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      AppText(
-                        service.packageUpdates
-                            ? '每次打开应用时检查新版本，下载与安装由你确认。'
-                            : '每次打开应用时检查对应平台的新版本，下载后需自行签名安装。',
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.5,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
                       const SizedBox(height: 12),
                       GlassTextButton(
                         key: const ValueKey('check-app-update'),
@@ -534,10 +523,14 @@ class AppUpdatePage extends StatelessWidget {
                       ] else if (service.checked && !available) ...[
                         const SizedBox(height: 12),
                         AppText(
-                          service.release == null ? '暂未发布可用的正式版本' : '已是最新版本',
+                          service.release == null
+                              ? '暂未发布可用的正式版本'
+                              : '已是最新版本 · ${service.release!.version.name}',
+                          key: service.release == null
+                              ? null
+                              : const ValueKey('latest-app-version'),
                         ),
-                      ],
-                      if (service.checked && service.release != null) ...[
+                      ] else if (service.checked && service.release != null) ...[
                         const SizedBox(height: 8),
                         AppText(
                           '最新正式版 ${service.release!.version.name}',
@@ -598,56 +591,47 @@ class AppUpdatePage extends StatelessWidget {
                     ),
                   ),
                 ],
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
               ],
               CurrentReleaseCard(updates: service),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
               const ArchiveSection(title: '重要说明', code: 'READ / BEFORE USE'),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               const ContentPanel(
                 key: ValueKey('app-important-notices'),
                 child: ReleaseNotes(projectImportantNotices),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
               const ArchiveSection(title: '项目与许可', code: 'SOURCE / LICENSES'),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               ContentPanel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const AppText(
-                      '基于 MewX 与原项目贡献者的轻小说 Android 客户端重构。原项目 GPL v2 或后续版本许可保留；本 Flutter 组合版本按 GPL v3 分发。',
+                      '基于 mikufoxxx/Wenku8_Flutter 与 MewX/Wenku8_Android 分支改造。应用源码遵循 GPL v3，可下载字体遵循 SIL OFL 1.1，语音协议参考 rany2/edge-tts（LGPL v3）。',
                       style: TextStyle(height: 1.6),
                     ),
                     const SizedBox(height: 12),
-                    const AppText(
-                      '小说正文、封面和插图的权利属于各自权利人。',
-                      style: TextStyle(height: 1.6),
-                    ),
-                    const SizedBox(height: 12),
-                    const AppText(
-                      '可下载字体遵循 SIL OFL 1.1；在线语音协议适配参考 rany2/edge-tts，遵循 LGPL v3。第三方组件的版权与完整授权分别保留在许可页中。',
-                      style: TextStyle(height: 1.6),
-                    ),
                     GlassTextButton(
                       key: const ValueKey('app-open-source-licenses'),
                       onPressed: () => showLicensePage(
                         context: context,
-                        applicationName: '哔哩轻小说',
+                        applicationName: 'LinoBunko',
                         applicationVersion: currentAppVersion,
                         applicationLegalese:
-                            'Copyright © MewX and contributors\nFlutter modifications © 2026 Wenku8 Flutter contributors',
+                            'Copyright © MewX and contributors\nFlutter modifications © 2026 Wenku8 Flutter & LinoBunko contributors',
                       ),
                       child: const AppText('开源许可与字体授权'),
                     ),
                     if (service != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       GlassTextButton(
                         key: const ValueKey('app-project-download'),
                         onPressed: () =>
                             _open(context, () => service.openProjectPage()),
                         child: AppText(
-                          service.checksEnabled ? '项目介绍与下载' : '项目介绍',
+                          service.checksEnabled ? '项目仓库与下载' : '项目仓库',
                         ),
                       ),
                     ],

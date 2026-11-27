@@ -12,11 +12,10 @@ import '../legacy_transport.dart';
 export 'current_release_content.dart'
     show currentReleaseNotes, publicReleaseNotes;
 
-const officialUpdateRepository = 'mikufoxxx/Wenku8_Flutter';
-const updateMirrorOrigin = 'https://git.3952039.xyz';
+const forkUpdateRepository = 'Rynowastaken/LinoBunko';
 const updateRepository = String.fromEnvironment(
   'UPDATE_REPOSITORY',
-  defaultValue: officialUpdateRepository,
+  defaultValue: forkUpdateRepository,
 );
 const currentAppVersion = '0.5.1';
 const currentAppBuild = 263;
@@ -26,7 +25,7 @@ class ReleaseVersion implements Comparable<ReleaseVersion> {
   final int major, minor, patch, build;
   static ReleaseVersion? parse(String value) {
     final match = RegExp(
-      r'^v?(\d+)\.(\d+)\.(\d+)(?:\+(\d+))?$',
+      r'^v?(\d+)\.(\d+)\.(\d+)(?:-[A-Za-z0-9.-]+)?(?:\+(\d+))?$',
     ).firstMatch(value);
     if (match == null) return null;
     final parts = [for (var i = 1; i <= 4; i++) int.tryParse(match[i] ?? '0')];
@@ -101,6 +100,15 @@ class AppRelease {
   final ReleaseVersion version;
   final Uri page;
   final List<UpdateAsset> assets;
+
+  static bool _matchesReleaseAssetName(String name, ReleaseVersion version) {
+    final v = version.name;
+    return name.startsWith('LinoBunko-v$v-') ||
+        name.startsWith('LinoBunko-$v-') ||
+        name.startsWith('linobunko-v$v-') ||
+        name.startsWith('linobunko-$v-') ||
+        name.startsWith('wenku8-$v-');
+  }
   static AppRelease? fromGithub(Map<String, dynamic> json, String repository) {
     if (!RegExp(r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$').hasMatch(repository)) {
       throw const FormatException('更新仓库格式错误');
@@ -116,7 +124,7 @@ class AppRelease {
       final url = Uri.tryParse(raw['browser_download_url']?.toString() ?? '');
       final size = raw['size'];
       if (name is! String ||
-          !name.startsWith('wenku8-${version.name}-') ||
+          !_matchesReleaseAssetName(name, version) ||
           !const ['.apk', '.ipa', '.hap'].any(name.endsWith) ||
           url == null ||
           url.scheme != 'https' ||
@@ -368,7 +376,7 @@ class GithubUpdateSource implements UpdateSource {
         HttpHeaders.acceptHeader,
         'application/vnd.github+json',
       );
-      request.headers.set(HttpHeaders.userAgentHeader, 'Wenku8-Flutter');
+      request.headers.set(HttpHeaders.userAgentHeader, 'LinoBunko-Flutter');
       request.headers.set('X-GitHub-Api-Version', '2022-11-28');
       request.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
       final response = await request.close().timeout(
@@ -619,48 +627,13 @@ class AppUpdates extends ChangeNotifier {
   late final _githubSource = GithubUpdateSource(
     assetExtension: notificationAssetExtension,
   );
-  late final _mirrorSource = GithubUpdateSource(
-    gateway: Uri.parse(updateMirrorOrigin),
-    assetExtension: notificationAssetExtension,
-  );
-  late final _mirrorFirstSource = MirrorFirstUpdateSource(
-    mirror: _mirrorSource,
-    original: _githubSource,
-  );
-  bool get _usesMirror => updateRepository == officialUpdateRepository;
-  Uri get projectPage => _usesMirror
-      ? Uri.parse(updateMirrorOrigin)
-      : Uri.https('github.com', '/$updateRepository');
-  Uri get releasePage => _usesMirror
-      ? Uri.parse('$updateMirrorOrigin/#releases')
-      : release?.page ??
-            Uri.https('github.com', '/$updateRepository/releases/');
-  UpdateSource get source =>
-      _source ?? (_usesMirror ? _mirrorFirstSource : _githubSource);
+  Uri get projectPage => Uri.https('github.com', '/$updateRepository');
+  Uri get releasePage =>
+      release?.page ?? Uri.https('github.com', '/$updateRepository/releases/');
+  UpdateSource get source => _source ?? _githubSource;
 
-  Future<void> openProjectPage({bool showRelease = false}) async {
-    var page = showRelease ? releasePage : projectPage;
-    if (_usesMirror) {
-      final client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 2);
-      try {
-        await (() async {
-          final request = await client.headUrl(Uri.parse(updateMirrorOrigin));
-          request.followRedirects = false;
-          final response = await request.close();
-          if (response.statusCode != 200) throw const HttpException('项目入口暂不可用');
-        })().timeout(const Duration(seconds: 2));
-      } catch (_) {
-        page = showRelease
-            ? release?.page ??
-                  Uri.https('github.com', '/$updateRepository/releases/')
-            : Uri.https('github.com', '/$updateRepository');
-      } finally {
-        client.close(force: true);
-      }
-    }
-    await platform.openRelease(page);
-  }
+  Future<void> openProjectPage({bool showRelease = false}) =>
+      platform.openRelease(showRelease ? releasePage : projectPage);
 
   final UpdatePlatform platform;
   final Future<Directory> Function() _directory;
