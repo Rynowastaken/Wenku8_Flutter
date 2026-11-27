@@ -1,6 +1,6 @@
-# 嗶哩輕小說 · Linovelib Flutter（Wenku8_Flutter Fork）
+# LinoBunko · 嗶哩輕小說文庫本閱讀器（Linovelib Flutter）
 
-**Cross-platform Flutter Light Novel Reader for Linovelib (`tw.linovelib.com`) & Local Books (EPUB / TXT / MOBI / AZW3 / PDF / DOCX) — featuring Tablet Bunkobon (`105:148`) layout, Japanese/Chinese Tategaki (直排翻頁), 3D Bookshelf, Edge TTS Listening, WebDAV/S3 Sync, and Reading Statistics on Android, iOS & HarmonyOS.**
+**LinoBunko — Cross-platform Flutter Light Novel Reader for Linovelib (`tw.linovelib.com`) & Local Books (EPUB / TXT / MOBI / AZW3 / PDF / DOCX) — featuring Tablet Bunkobon (`105:148`) layout, Japanese/Chinese Tategaki (直排翻頁), 3D Bookshelf, Edge TTS Listening, WebDAV/S3 Sync, and Reading Statistics on Android, iOS & HarmonyOS.**
 
 > [!IMPORTANT]
 > **本專案僅為第三方閱讀用戶端，提供閱讀介面與本機書籍管理，不營運線上書庫、不自行發布小說資源，安裝包不附帶小說檔案。線上內容及可讀狀態一切以 tw.linovelib.com 為準；不提供因版權限制而停止開放的線上書籍閱讀。**
@@ -12,13 +12,14 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-cover-dark.svg" />
-    <img src="docs/images/readme-cover-light.svg" width="100%" alt="Linovelib Flutter · 嗶哩輕小說第三方閱讀器 · Android、iOS 與 HarmonyOS 輕小說閱讀用戶端" />
+    <img src="docs/images/readme-cover-light.svg" width="100%" alt="LinoBunko · 嗶哩輕小說文庫本閱讀器 · Android、iOS 與 HarmonyOS 輕小說閱讀用戶端" />
   </picture>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Rynowastaken/Wenku8_Flutter/actions/workflows/flutter-ci.yml"><img src="https://github.com/Rynowastaken/Wenku8_Flutter/actions/workflows/flutter-ci.yml/badge.svg?branch=master&amp;event=push" alt="Source checks" /></a>
-  <a href="https://github.com/Rynowastaken/Wenku8_Flutter/releases"><img src="https://img.shields.io/github/v/release/Rynowastaken/Wenku8_Flutter?style=flat-square&amp;logo=github&amp;color=blue" alt="Release" /></a>
+  <a href="https://github.com/Rynowastaken/LinoBunko/actions/workflows/flutter-ci.yml"><img src="https://github.com/Rynowastaken/LinoBunko/actions/workflows/flutter-ci.yml/badge.svg?branch=master&amp;event=push" alt="Source checks" /></a>
+  <a href="https://github.com/Rynowastaken/LinoBunko/releases/latest"><img src="https://img.shields.io/github/v/release/Rynowastaken/LinoBunko?style=flat-square&amp;logo=github&amp;color=blue" alt="Release" /></a>
+  <a href="https://github.com/Rynowastaken/LinoBunko/releases"><img src="https://img.shields.io/github/downloads/Rynowastaken/LinoBunko/total?style=flat-square&amp;label=Downloads&amp;color=brightgreen" alt="Downloads" /></a>
   <img src="https://img.shields.io/badge/Source-Linovelib%20%28tw.linovelib.com%29-2E7D32?style=flat-square" alt="Source: Linovelib" />
   <img src="https://img.shields.io/badge/Tablet-Bunkobon%20105%3A148-6D4C41?style=flat-square" alt="Tablet Bunkobon Layout" />
   <img src="https://img.shields.io/badge/Android-Flutter-3DDC84?style=flat-square&amp;logo=android&amp;logoColor=white" alt="Android" />
@@ -55,13 +56,22 @@
 
 <p align="center"><sub>發現故事　／　文庫本沉浸閱讀　／　依習慣自訂<br />介面書目為示範資料</sub></p>
 
-## 從原始碼建置 / Build from Source
+## 下載與從原始碼建置 / Download & Build
 
-> 本分支程式碼可完整建置 Android / iOS / HarmonyOS 用戶端；如需直接安裝，請使用儲存庫 [Releases](https://github.com/Rynowastaken/Wenku8_Flutter/releases)（若有發布）或依下方步驟於本機建置。
+前往 [GitHub Releases](https://github.com/Rynowastaken/LinoBunko/releases/latest) 下載對應架構的 Android APK：
+
+| 裝置架構 | 建議安裝包 |
+| :-- | :-- |
+| 主流 Android 手機／平板（ARM64） | **`LinoBunko-v0.5.1-linovelib-arm64-v8a.apk`**（推薦） |
+| 舊款 32 位元 ARM 裝置 | `LinoBunko-v0.5.1-linovelib-armeabi-v7a.apk` |
+| x86_64 模擬器／裝置 | `LinoBunko-v0.5.1-linovelib-x86_64.apk` |
+| 全架構通用包（Universal） | `LinoBunko-v0.5.1-linovelib-universal.apk` |
+
+### 從原始碼建置 / Build from Source
 
 ```bash
-git clone https://github.com/Rynowastaken/Wenku8_Flutter.git
-cd Wenku8_Flutter
+git clone https://github.com/Rynowastaken/LinoBunko.git
+cd LinoBunko
 flutter pub get
 
 # 建置 Android Release APK（建議搭配 JDK 17 以相容 Gradle 8.14）
@@ -71,7 +81,7 @@ flutter build apk --release --split-per-abi
 - **Android** 會產生 `app-arm64-v8a-release.apk`、`app-armeabi-v7a-release.apk` 與 `app-x86_64-release.apk`。
 - **iOS / HarmonyOS** 建置與簽章說明請參閱 [建置指南](docs/RELEASING.md)。
 
-[完整更新說明](CHANGELOG.md) · [閱讀指南](docs/READER.md) · [搜尋指南](docs/SEARCH.md) · [回報問題](https://github.com/Rynowastaken/Wenku8_Flutter/issues)
+[完整更新說明](CHANGELOG.md) · [閱讀指南](docs/READER.md) · [搜尋指南](docs/SEARCH.md) · [回報問題](https://github.com/Rynowastaken/LinoBunko/issues)
 
 ## 閱讀，依你的習慣
 
@@ -152,10 +162,10 @@ flutter build apk --release --split-per-abi
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=Rynowastaken%2FWenku8_Flutter&type=date&releases=&legend=bottom-right">
+<a href="https://www.star-history.com/?repos=Rynowastaken%2FLinoBunko&type=date&releases=&legend=bottom-right">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Rynowastaken/Wenku8_Flutter&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Rynowastaken/Wenku8_Flutter&type=date&legend=top-left" />
-    <img src="https://api.star-history.com/chart?repos=Rynowastaken/Wenku8_Flutter&type=date&legend=top-left" width="100%" alt="Star History Chart" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Rynowastaken/LinoBunko&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Rynowastaken/LinoBunko&type=date&legend=top-left" />
+    <img src="https://api.star-history.com/chart?repos=Rynowastaken/LinoBunko&type=date&legend=top-left" width="100%" alt="Star History Chart" />
   </picture>
 </a>
