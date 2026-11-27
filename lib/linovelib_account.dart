@@ -571,13 +571,25 @@ class LinovelibAccount extends WenkuAccount {
       throw const OnlineAuthenticationRequired();
     }
     final cookieProfile = _profileFromCookies(_client.cookies);
-    final parsed = _parseUserPage(res.document, cookieProfile);
+    var parsed = _parseUserPage(res.document, cookieProfile);
+    _detectSignAction(res.document);
+    final avatarUrl = _extractAvatarUrl(res.document, parsed?.id ?? 0);
+    if (parsed == null || (parsed.score == 0 && parsed.experience == 0)) {
+      try {
+        final detailRes = await _client.documentWithUri(
+          '/userdetail.php',
+          refresh: true,
+        );
+        if (!_isLoginPage(detailRes.uri, detailRes.document)) {
+          _detectSignAction(detailRes.document, clearFirst: false);
+          parsed = _parseUserPage(detailRes.document, parsed ?? cookieProfile);
+        }
+      } catch (_) {}
+    }
     if (parsed != null) {
       profile = parsed;
       await _persistProfile(parsed);
     }
-    _detectSignAction(res.document);
-    final avatarUrl = _extractAvatarUrl(res.document, parsed?.id ?? 0);
     if (avatarUrl != null) {
       try {
         avatar = await _client.image(avatarUrl, referer: res.uri.toString());
@@ -600,8 +612,8 @@ class LinovelibAccount extends WenkuAccount {
     return cloudBooks!;
   }
 
-  void _detectSignAction(Document doc) {
-    _signPath = null;
+  void _detectSignAction(Document doc, {bool clearFirst = true}) {
+    if (clearFirst) _signPath = null;
     for (final el in doc.querySelectorAll(
       'a, button, form, li, div, span, input',
     )) {
@@ -663,6 +675,47 @@ class LinovelibAccount extends WenkuAccount {
 
   WenkuProfile? _parseUserPage(Document doc, WenkuProfile? fallback) {
     final fullText = normalizeText(doc.body?.text ?? '');
+    final kvPairs = <({String key, String value})>[];
+    for (final li in doc.querySelectorAll('.center-acc-li')) {
+      final out = normalizeText(li.querySelector('output')?.text ?? '');
+      final label = normalizeText(
+        li.text.replaceFirst(out, ''),
+      );
+      if (out.isNotEmpty && label.isNotEmpty) {
+        kvPairs.add((key: label, value: out));
+      }
+    }
+    for (final row in doc.querySelectorAll('.center-nav-ol li, tr')) {
+      final keyEl = row.querySelector('.book-title, th, td:first-child, span');
+      final valEl = row.querySelector(
+        '.book-author, output, td:nth-child(2), em, small',
+      );
+      final keyText = normalizeText(keyEl?.text ?? '');
+      final valText = normalizeText(valEl?.text ?? '');
+      if (keyText.isNotEmpty && valText.isNotEmpty && keyText != valText) {
+        kvPairs.add((key: keyText, value: valText));
+      }
+    }
+
+    int? extractPairInt(List<String> labels) {
+      for (final pair in kvPairs) {
+        if (labels.any((l) => pair.key.contains(l))) {
+          final m = RegExp(r'(\d+)').firstMatch(pair.value);
+          if (m != null) return int.tryParse(m.group(1)!);
+        }
+      }
+      return null;
+    }
+
+    String extractPairLabel(List<String> labels) {
+      for (final pair in kvPairs) {
+        if (labels.any((l) => pair.key.contains(l)) && pair.value.isNotEmpty) {
+          return pair.value;
+        }
+      }
+      return '';
+    }
+
     int? extractInt(List<RegExp> patterns) {
       for (final pattern in patterns) {
         final match = pattern.firstMatch(fullText);
@@ -683,7 +736,7 @@ class LinovelibAccount extends WenkuAccount {
     final headerName = normalizeText(
       doc
           .querySelector(
-            '.user-name, .user-title, .my-info-name, h1, h2, .aui-center-title',
+            '.center-header-p, .user-name, .user-title, .my-info-name, h1, h2, .aui-center-title',
           )
           ?.text ??
           '',
@@ -697,27 +750,38 @@ class LinovelibAccount extends WenkuAccount {
     final nickname = extractLabel([
       RegExp(r'(?:暱稱|昵称)[：:\s]+([^\n]+)'),
     ]);
-    final rank = extractLabel([
+    final rankFromPair = extractPairLabel(['頭銜', '头衔', '等級', '等级', '會員組', '用户组']);
+    final rankFromText = extractLabel([
       RegExp(r'(?:頭銜|头衔|等級|等级|會員組|用户组)[：:\s]+([^\s\n]+)'),
+      RegExp(r'(LV\.?\s*\d+)', caseSensitive: false),
     ]);
+    final rank = rankFromPair.isNotEmpty ? rankFromPair : rankFromText;
     final uid =
         fallback?.id ??
         extractInt([
           RegExp(r'(?:UID|用戶ID|用户ID)[：:\s]+(\d+)', caseSensitive: false),
         ]) ??
         _fallbackUid(username.isNotEmpty ? username : headerName);
-    final score =
+    final parsedScore =
+        extractPairInt(['積分', '积分', '輕石', '轻石', '金幣', '金币', '硬幣', '硬币']) ??
         extractInt([
-          RegExp(r'(?:積分|积分|硬幣|硬币|金幣|金币)[：:\s]+(\d+)'),
-        ]) ??
-        fallback?.score ??
-        0;
-    final exp =
+          RegExp(
+            r'(?:現有|现有)?(?:積分|积分|輕石|轻石|硬幣|硬币|金幣|金币)[：:\s]+(\d+)',
+          ),
+          RegExp(r'(\d+)\s*(?:積分|积分|輕石|轻石|硬幣|硬币|金幣|金币)'),
+        ]);
+    final score = (parsedScore != null && parsedScore > 0)
+        ? parsedScore
+        : (fallback?.score ?? parsedScore ?? 0);
+    final parsedExp =
+        extractPairInt(['經驗', '经验', '經驗值', '经验值']) ??
         extractInt([
-          RegExp(r'(?:經驗|经验|經驗值|经验值)[：:\s]+(\d+)'),
-        ]) ??
-        fallback?.experience ??
-        0;
+          RegExp(r'(?:經驗值|经验值|經驗|经验)[：:\s]+(\d+)'),
+          RegExp(r'(\d+)\s*(?:經驗值|经验值|經驗|经验)'),
+        ]);
+    final exp = (parsedExp != null && parsedExp > 0)
+        ? parsedExp
+        : (fallback?.experience ?? parsedExp ?? 0);
 
     final resolvedUser = username.isNotEmpty
         ? username
@@ -742,6 +806,17 @@ class LinovelibAccount extends WenkuAccount {
   }
 
   String? _extractAvatarUrl(Document doc, int uid) {
+    final headerAvatar = doc.querySelector('img.center-header-img');
+    if (headerAvatar != null) {
+      final src =
+          (headerAvatar.attributes['data-src'] ??
+                  headerAvatar.attributes['src'] ??
+                  '')
+              .trim();
+      if (src.isNotEmpty && !src.contains('noavatar')) {
+        return _client.resolve(src).toString();
+      }
+    }
     for (final img in doc.querySelectorAll('img')) {
       final src =
           (img.attributes['data-src'] ?? img.attributes['src'] ?? '').trim();
@@ -978,8 +1053,16 @@ class LinovelibAccount extends WenkuAccount {
       id: uid ?? _fallbackUid(uname.isNotEmpty ? uname : nick),
       username: uname.isNotEmpty ? uname : nick,
       nickname: nick,
-      score: int.tryParse(fields['jieqiUserScore'] ?? '') ?? 0,
-      experience: 0,
+      score:
+          int.tryParse(
+            fields['jieqiUserScore'] ?? fields['jieqiUserEgolds'] ?? '',
+          ) ??
+          0,
+      experience:
+          int.tryParse(
+            fields['jieqiUserExperience'] ?? fields['jieqiUserExp'] ?? '',
+          ) ??
+          0,
       rank: fields['jieqiUserGroupName'] ?? '正式會員',
     );
   }
