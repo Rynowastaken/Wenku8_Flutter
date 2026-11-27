@@ -211,6 +211,114 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
     }
   }
 
+  Future<void> _dailyLogin() async {
+    final account = widget.account;
+    if (account.busy) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    try {
+      await account.signIn();
+      if (mounted) {
+        showNovelFeedback(
+          context,
+          account.lastSignInMessage ?? '今日登录已完成',
+        );
+      }
+    } on DailyLoginPasswordRequired {
+      if (!mounted) return;
+      final password = await _promptDailyPassword();
+      if (password == null || !mounted) return;
+      try {
+        await account.signInWithPassword(password);
+        if (mounted) {
+          showNovelFeedback(
+            context,
+            account.lastSignInMessage ?? '今日登录已完成',
+          );
+        }
+      } catch (_) {}
+    } catch (_) {}
+  }
+
+  Future<String?> _promptDailyPassword() async {
+    final controller = TextEditingController();
+    var obscure = true;
+    try {
+      return await showJellySheet<String>(
+        context: context,
+        reduceMotion: widget.state.reduceMotion,
+        builder: (sheet) => StatefulBuilder(
+          builder: (context, setSheetState) => Padding(
+            padding: EdgeInsets.fromLTRB(
+              24,
+              24,
+              24,
+              24 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const AppText(
+                  '每日登录领积分',
+                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  obscureText: obscure,
+                  autofocus: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.visiblePassword,
+                  textInputAction: TextInputAction.done,
+                  maxLength: 64,
+                  onSubmitted: (_) =>
+                      Navigator.pop(sheet, controller.text),
+                  decoration: InputDecoration(
+                    labelText: appText(context, '密码'),
+                    hintText: appText(context, '请输入密码'),
+                    counterText: '',
+                    suffixIcon: IconButton(
+                      tooltip: obscure ? '显示密码' : '隐藏密码',
+                      icon: ArchiveIcon(
+                        obscure
+                            ? CupertinoIcons.eye
+                            : CupertinoIcons.eye_slash,
+                      ),
+                      onPressed: () =>
+                          setSheetState(() => obscure = !obscure),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GlassTextButton(
+                        onPressed: () => Navigator.pop(sheet),
+                        child: const AppText('取消'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GlassTextButton(
+                        onPressed: () =>
+                            Navigator.pop(sheet, controller.text),
+                        child: const AppText('登录'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
   Future<void> _login() async {
     final account = widget.account;
     if (account.busy) return;
@@ -386,9 +494,9 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                                   key: const ValueKey('account-sign'),
                                   onPressed: account.busy || account.signedToday
                                       ? null
-                                      : () => _run(account.signIn, '今日签到已完成'),
+                                      : _dailyLogin,
                                   child: AppText(
-                                    account.signedToday ? '今日已签到' : '每日签到',
+                                    account.signedToday ? '今日已登录' : '每日登录',
                                   ),
                                 ),
                               GlassTextButton(

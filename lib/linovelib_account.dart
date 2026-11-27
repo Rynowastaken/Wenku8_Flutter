@@ -43,7 +43,7 @@ class LinovelibAccount extends WenkuAccount {
   int get sessionRevision => _sessionRevision;
 
   @override
-  bool get supportsSignIn => signedToday || _signPath != null;
+  bool get supportsSignIn => authenticated;
 
   @override
   ReviewPageReader? get reviewReader => _readReviews;
@@ -121,7 +121,8 @@ class LinovelibAccount extends WenkuAccount {
         throw const FormatException('用户名或密码有误，请检查后重试');
       }
       authenticated = true;
-      signedToday = _preferences.getString(_signedDateKey) == _todayKey();
+      signedToday = true;
+      await _preferences.setString(_signedDateKey, _todayKey());
       _sessionRevision++;
       await _persistCookiesNow(_client.cookies);
       profile =
@@ -155,39 +156,137 @@ class LinovelibAccount extends WenkuAccount {
   });
 
   @override
-  Future<void> signIn() => _runBusy('正在尝试每日签到…', () async {
+  Future<void> signIn() => _runBusy('正在触发每日登录…', () async {
     _requireAuth();
-    if (signedToday) return;
+    lastSignInMessage = null;
+    if (signedToday) {
+      lastSignInMessage = '今日已完成登录';
+      return;
+    }
     if (_signPath == null) {
       await _fetchProfile();
     }
-    final path = _signPath;
-    if (path == null) {
-      throw const FormatException('哔哩轻小说网页端暂未提供每日签到接口');
+    final explicitPath = _signPath;
+    if (explicitPath != null) {
+      final result = _signMethod == 'POST'
+          ? await _client.postForm(explicitPath, const {'ajax_request': '1'})
+          : (await _client.documentWithUri(explicitPath, refresh: true));
+      final doc = result is ({Uri uri, Document document, String text})
+          ? result.document
+          : (result as ({Uri uri, Document document})).document;
+      final uri = result is ({Uri uri, Document document, String text})
+          ? result.uri
+          : (result as ({Uri uri, Document document})).uri;
+      if (_isLoginPage(uri, doc)) {
+        await _clearSessionState();
+        throw const OnlineAuthenticationRequired();
+      }
+      final err = _extractSiteError(doc);
+      if (err != null && !err.contains('已') && !err.contains('重複')) {
+        throw FormatException(err);
+      }
+      signedToday = true;
+      await _preferences.setString(_signedDateKey, _todayKey());
+      try {
+        await _fetchProfile();
+      } catch (_) {}
+      lastSignInMessage = '今日签到已完成';
+      return;
     }
-    final result = _signMethod == 'POST'
-        ? await _client.postForm(path, const {'ajax_request': '1'})
-        : (await _client.documentWithUri(path, refresh: true));
-    final doc = result is ({Uri uri, Document document, String text})
-        ? result.document
-        : (result as ({Uri uri, Document document})).document;
-    final uri = result is ({Uri uri, Document document, String text})
-        ? result.uri
-        : (result as ({Uri uri, Document document})).uri;
-    if (_isLoginPage(uri, doc)) {
-      await _clearSessionState();
-      throw const OnlineAuthenticationRequired();
+
+    final beforeScore = profile?.score ?? 0;
+    final autoCookies = Map<String, String>.from(_client.cookies)
+      ..remove('PHPSESSID');
+    if (autoCookies.containsKey('jieqiUserInfo')) {
+      try {
+        final probe = await _client.fetchIsolatedDocument(
+          '/user.php',
+          cookies: autoCookies,
+        );
+        if (!_isLoginPage(probe.uri, probe.document)) {
+          if (probe.cookies.isNotEmpty) {
+            _client.setCookies({..._client.cookies, ...probe.cookies});
+            await _persistCookiesNow(_client.cookies);
+          }
+          await _fetchProfile();
+          final afterScore = profile?.score ?? beforeScore;
+          if (afterScore > beforeScore) {
+            signedToday = true;
+            await _preferences.setString(_signedDateKey, _todayKey());
+            lastSignInMessage =
+                '每日登录成功 · +${afterScore - beforeScore} 积分（当前 $afterScore）';
+            return;
+          }
+        }
+      } on OnlineAuthenticationRequired {
+        rethrow;
+      } catch (_) {}
     }
-    final err = _extractSiteError(doc);
-    if (err != null && !err.contains('已') && !err.contains('重複')) {
-      throw FormatException(err);
-    }
-    signedToday = true;
-    await _preferences.setString(_signedDateKey, _todayKey());
-    try {
-      await _fetchProfile();
-    } catch (_) {}
+
+    // Cookie auto-login either redirected or did not increase points today;
+    // prompt for one-time re-login without disturbing the active session.
+    throw const DailyLoginPasswordRequired();
   });
+
+  @override
+  Future<void> signInWithPassword(String password) =>
+      _runBusy('正在重新登录以领取今日积分…', () async {
+        _requireAuth();
+        lastSignInMessage = null;
+        if (password.isEmpty) {
+          throw const FormatException('请输入密码');
+        }
+        final username = profile?.username.trim() ?? '';
+        if (username.isEmpty) {
+          throw const FormatException('无法获取当前用户名');
+        }
+        final beforeScore = profile?.score ?? 0;
+        final previousCookies = Map<String, String>.from(_client.cookies);
+        try {
+          _client.clearCookies(notify: false);
+          _client.clearDocumentCache();
+          final response = await _client.postForm(
+            '/login.php?do=submit',
+            {
+              'username': username,
+              'password': password,
+              'act': 'login',
+              'usecookie': '2592000',
+              'submit': '',
+            },
+            referer: '${LinovelibClient.origin}/login.php',
+          );
+          if (_isCaptchaBlocked(response.document)) {
+            _client.setCookies(previousCookies);
+            throw const FormatException('网站当前需要图形验证，请稍后重试');
+          }
+          final err = _extractSiteError(response.document);
+          if (err != null) {
+            _client.setCookies(previousCookies);
+            throw FormatException(err);
+          }
+          if (_isLoginPage(response.uri, response.document) &&
+              !_hasAuthCookie(_client.cookies)) {
+            _client.setCookies(previousCookies);
+            throw const FormatException('密码有误，请检查后重试');
+          }
+          await _persistCookiesNow(_client.cookies);
+          await _fetchProfile();
+          signedToday = true;
+          await _preferences.setString(_signedDateKey, _todayKey());
+          final afterScore = profile?.score ?? beforeScore;
+          final delta = afterScore - beforeScore;
+          lastSignInMessage = delta > 0
+              ? '每日登录成功 · +$delta 积分（当前 $afterScore）'
+              : '今日登录已完成（当前 $afterScore 积分）';
+        } catch (err) {
+          if (!_hasAuthCookie(_client.cookies) &&
+              previousCookies.isNotEmpty) {
+            _client.setCookies(previousCookies);
+          }
+          rethrow;
+        }
+      });
 
   @override
   Future<List<CloudBook>> refreshCloud() => _runBusy('正在读取云书架…', () async {
@@ -533,6 +632,8 @@ class LinovelibAccount extends WenkuAccount {
     notifyListeners();
     try {
       return await action();
+    } on DailyLoginPasswordRequired {
+      rethrow;
     } catch (failure) {
       error = WenkuAccount.describeError(failure);
       rethrow;

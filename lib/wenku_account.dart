@@ -36,13 +36,19 @@ class CloudUploadResult {
   final Object? error;
 }
 
+class DailyLoginPasswordRequired extends FormatException {
+  const DailyLoginPasswordRequired([
+    super.message = '请输入密码重新登录以触发今日积分',
+  ]);
+}
+
 /// Domain-facing account state for presentation and local-library integration.
 /// No requests, response parsers, service status codes or session material live here.
 class WenkuAccount extends ChangeNotifier {
   WenkuAccount();
   Uint8List? avatar;
   bool authenticated = false, busy = false, signedToday = false;
-  String? operation, error;
+  String? operation, error, lastSignInMessage;
   WenkuProfile? profile;
   List<CloudBook>? cloudBooks;
   int? syncedAt;
@@ -68,6 +74,7 @@ class WenkuAccount extends ChangeNotifier {
   Future<void> connectPublications(String password) => _unavailable();
   Future<void> refreshProfile() => _unavailable();
   Future<void> signIn() => _unavailable();
+  Future<void> signInWithPassword(String password) => signIn();
   Future<List<CloudBook>> refreshCloud() => _unavailable();
   Future<CloudShelfPlan> exchangeShelf({
     required Set<int> local,

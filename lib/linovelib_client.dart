@@ -153,6 +153,32 @@ class LinovelibClient {
     return (uri: result.uri, document: document);
   }
 
+  Future<({Uri uri, Document document, Map<String, String> cookies})>
+  fetchIsolatedDocument(
+    String pathOrUrl, {
+    required Map<String, String> cookies,
+  }) async {
+    final uri = pathOrUrl.contains('://')
+        ? Uri.parse(pathOrUrl)
+        : resolve(pathOrUrl);
+    final captured = <String, String>{};
+    final result = await _request(
+      uri,
+      accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,'
+          'image/avif,image/webp,*/*;q=0.8',
+      limit: _maxPageBytes,
+      overrideCookies: cookies,
+      capturedCookies: captured,
+    );
+    final html = utf8.decode(result.bytes, allowMalformed: true);
+    return (
+      uri: result.uri,
+      document: html_parser.parse(html),
+      cookies: captured,
+    );
+  }
+
   Future<({Uri uri, Document document, String text})> postForm(
     String pathOrUrl,
     Map<String, String> fields, {
@@ -208,8 +234,13 @@ class LinovelibClient {
     return host == 'linovelib.com' || host.endsWith('.linovelib.com');
   }
 
-  void _captureCookies(Uri uri, HttpClientResponse response) {
+  void _captureCookies(
+    Uri uri,
+    HttpClientResponse response, {
+    Map<String, String>? target,
+  }) {
     if (!_isSessionHost(uri) || response.cookies.isEmpty) return;
+    final store = target ?? _cookies;
     var changed = false;
     for (final cookie in response.cookies) {
       final deleted =
@@ -217,13 +248,13 @@ class LinovelibClient {
           cookie.value.toLowerCase() == 'deleted' ||
           cookie.maxAge == 0;
       if (deleted) {
-        if (_cookies.remove(cookie.name) != null) changed = true;
-      } else if (_cookies[cookie.name] != cookie.value) {
-        _cookies[cookie.name] = cookie.value;
+        if (store.remove(cookie.name) != null) changed = true;
+      } else if (store[cookie.name] != cookie.value) {
+        store[cookie.name] = cookie.value;
         changed = true;
       }
     }
-    if (changed) onCookiesChanged?.call(cookies);
+    if (changed && target == null) onCookiesChanged?.call(cookies);
   }
 
   Future<({Uri uri, Uint8List bytes})> _request(
@@ -235,6 +266,8 @@ class LinovelibClient {
     required int limit,
     String? referer,
     bool pace = true,
+    Map<String, String>? overrideCookies,
+    Map<String, String>? capturedCookies,
   }) async {
     for (var attempt = 0; ; attempt++) {
       HttpClientResponse? response;
@@ -258,10 +291,13 @@ class LinovelibClient {
           } else if (currentUri.host == 'tw.linovelib.com') {
             request.headers.set(HttpHeaders.refererHeader, origin);
           }
-          if (_isSessionHost(currentUri) && _cookies.isNotEmpty) {
+          final requestCookies = overrideCookies ?? _cookies;
+          if (_isSessionHost(currentUri) && requestCookies.isNotEmpty) {
             request.headers.set(
               HttpHeaders.cookieHeader,
-              _cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
+              requestCookies.entries
+                  .map((e) => '${e.key}=${e.value}')
+                  .join('; '),
             );
           }
           if (currentBody != null && currentMethod == 'POST') {
@@ -272,7 +308,7 @@ class LinovelibClient {
             request.add(currentBody);
           }
           response = await request.close().timeout(_requestTimeout);
-          _captureCookies(currentUri, response);
+          _captureCookies(currentUri, response, target: capturedCookies);
           final status = response.statusCode;
           if (const {301, 302, 303, 307, 308}.contains(status)) {
             final location = response.headers.value(HttpHeaders.locationHeader);
