@@ -27,6 +27,8 @@ class LinovelibAccount extends WenkuAccount {
   static const _cookiesKey = 'linovelib.account.cookies.v1';
   static const _profileKey = 'linovelib.account.profile.v1';
   static const _signedDateKey = 'linovelib.account.signed_date.v1';
+  static const _bookcaseCleanupKey = 'linovelib.account.bookcase_cleanup.v1';
+  static const _suspectCaseIdFloor = 100000;
 
   final LinovelibClient _client;
   final SharedPreferences _preferences;
@@ -39,6 +41,9 @@ class LinovelibAccount extends WenkuAccount {
 
   @override
   int get sessionRevision => _sessionRevision;
+
+  @override
+  bool get supportsSignIn => signedToday || _signPath != null;
 
   @override
   ReviewPageReader? get reviewReader => _readReviews;
@@ -250,17 +255,32 @@ class LinovelibAccount extends WenkuAccount {
     Set<int>? filter(Set<int>? source) => source == null
         ? null
         : {for (final id in source) if (LinovelibIds.websiteBook(id) != null) id};
-    final filteredLocal = filter(local)!;
-    final filteredLastLocal = filter(lastLocal);
-    final filteredLastCloud = filter(lastCloud);
     final remoteBooks = await _fetchCloudBooks();
     final remoteIds = {for (final b in remoteBooks) b.id};
+    final needsCleanup = _preferences.getBool(_bookcaseCleanupKey) != true;
+    final bogusLocal = needsCleanup
+        ? {
+            for (final id in filter(local)!)
+              if ((LinovelibIds.websiteBook(id) ?? 0) >= _suspectCaseIdFloor &&
+                  !remoteIds.contains(id))
+                id,
+          }
+        : const <int>{};
+    final filteredLocal = filter(local)!..removeAll(bogusLocal);
+    final filteredLastLocal = filter(lastLocal)?..removeAll(bogusLocal);
+    final filteredLastCloud = filter(lastCloud);
     final plan = CloudShelfPlan(
       local: filteredLocal,
       remote: remoteIds,
       lastLocal: filteredLastLocal,
       lastCloud: filteredLastCloud,
     );
+    if (bogusLocal.isNotEmpty) {
+      plan.localRemoved.addAll(bogusLocal);
+    }
+    if (needsCleanup) {
+      await _preferences.setBool(_bookcaseCleanupKey, true);
+    }
     final toUpload = plan.target.difference(remoteIds);
     final toDelete = remoteIds.difference(plan.target);
     for (final id in toUpload) {
@@ -582,13 +602,23 @@ class LinovelibAccount extends WenkuAccount {
 
   void _detectSignAction(Document doc) {
     _signPath = null;
-    for (final el in doc.querySelectorAll('a, button, form')) {
-      final text = normalizeText(el.text);
-      final href = el.attributes['href'] ?? el.attributes['action'] ?? '';
+    for (final el in doc.querySelectorAll(
+      'a, button, form, li, div, span, input',
+    )) {
+      final text = normalizeText(
+        el.text.isNotEmpty ? el.text : (el.attributes['value'] ?? ''),
+      );
+      final href =
+          el.attributes['href'] ??
+          el.attributes['action'] ??
+          el.attributes['data-url'] ??
+          el.attributes['data-href'] ??
+          '';
       final onclick = el.attributes['onclick'] ?? '';
       final combined = '$text $href $onclick'.toLowerCase();
       if (!combined.contains('簽到') &&
           !combined.contains('签到') &&
+          !combined.contains('打卡') &&
           !combined.contains('sign') &&
           !combined.contains('qiandao')) {
         continue;
@@ -608,11 +638,24 @@ class LinovelibAccount extends WenkuAccount {
         _signMethod = 'GET';
         return;
       }
-      final urlMatch = RegExp(r'''['"]([^'"]*(?:sign|qiandao)[^'"]*)['"]''')
-          .firstMatch(onclick);
+      final urlMatch = RegExp(
+        r'''['"](/[^'"]*(?:sign|qiandao)[^'"]*)['"]''',
+      ).firstMatch(onclick);
       if (urlMatch != null) {
         _signPath = urlMatch.group(1);
         _signMethod = onclick.toLowerCase().contains('post') ? 'POST' : 'GET';
+        return;
+      }
+    }
+    for (final script in doc.querySelectorAll('script')) {
+      final urlMatch = RegExp(
+        r'''['"](/[^'"]*(?:usersign|qiandao|/sign)[^'"]*\.php[^'"]*)['"]''',
+      ).firstMatch(script.text);
+      if (urlMatch != null) {
+        _signPath = urlMatch.group(1);
+        _signMethod = script.text.toLowerCase().contains('post')
+            ? 'POST'
+            : 'GET';
         return;
       }
     }
@@ -728,6 +771,7 @@ class LinovelibAccount extends WenkuAccount {
           ? [container]
           : container.querySelectorAll('a[href]');
       int? siteId;
+      int? fallbackBidId;
       var title = '';
       var latestChapter = '';
       var latestChapterId = 0;
@@ -736,15 +780,28 @@ class LinovelibAccount extends WenkuAccount {
 
       for (final a in links) {
         final href = a.attributes['href'] ?? '';
-        final novelMatch = RegExp(r'/novel/(\d+)(?:\.html|/|$)').firstMatch(href) ??
-            RegExp(r'[?&](?:bid|aid)=(\d+)').firstMatch(href);
-        if (novelMatch != null && siteId == null) {
-          siteId = int.tryParse(novelMatch.group(1)!);
-          title = normalizeText(
-            container.querySelector('.book-title, h4, h3, .title')?.text ??
-                a.text,
-          );
+        final delMatch = RegExp(r'[?&]delid=(\d+)').firstMatch(href);
+        if (delMatch != null) caseId = delMatch.group(1);
+
+        // In Jieqi's readbookcase.php / bookcase.php URLs, `bid` is the bookcase
+        // entry ID (`caseid`), while `aid` or `/novel/<id>` is the real book ID.
+        if (href.contains('bookcase')) {
+          final bidMatch = RegExp(r'[?&]bid=(\d+)').firstMatch(href);
+          if (bidMatch != null) caseId ??= bidMatch.group(1);
         }
+
+        final bookMatch =
+            RegExp(r'/novel/(\d+)(?:\.html|/|$)').firstMatch(href) ??
+            RegExp(r'[?&]aid=(\d+)').firstMatch(href);
+        if (bookMatch != null && siteId == null) {
+          siteId = int.tryParse(bookMatch.group(1)!);
+        } else if (!href.contains('bookcase')) {
+          final bidMatch = RegExp(r'[?&]bid=(\d+)').firstMatch(href);
+          if (bidMatch != null && fallbackBidId == null) {
+            fallbackBidId = int.tryParse(bidMatch.group(1)!);
+          }
+        }
+
         final chapMatch = RegExp(
           r'/novel/\d+/(\d+)\.html',
         ).firstMatch(href);
@@ -753,8 +810,37 @@ class LinovelibAccount extends WenkuAccount {
           final text = normalizeText(a.text);
           if (text.isNotEmpty) latestChapter = text;
         }
-        final delMatch = RegExp(r'[?&]delid=(\d+)').firstMatch(href);
-        if (delMatch != null) caseId = delMatch.group(1);
+        if (chapMatch == null && (bookMatch != null || href.contains('aid='))) {
+          final linkText = normalizeText(a.text);
+          if (title.isEmpty &&
+              linkText.isNotEmpty &&
+              linkText != '閱讀' &&
+              linkText != '阅读' &&
+              linkText != '移除' &&
+              linkText != '刪除' &&
+              linkText != '删除') {
+            title = linkText;
+          }
+        }
+      }
+      if (siteId == null) {
+        for (final img in container.querySelectorAll('img')) {
+          final src =
+              img.attributes['data-src'] ?? img.attributes['src'] ?? '';
+          final imgMatch = RegExp(
+            r'/files/article/image/\d+/(\d+)/',
+          ).firstMatch(src);
+          if (imgMatch != null) {
+            siteId = int.tryParse(imgMatch.group(1)!);
+            break;
+          }
+        }
+      }
+      siteId ??= fallbackBidId;
+      if (title.isEmpty) {
+        title = normalizeText(
+          container.querySelector('.book-title, h4, h3, .title')?.text ?? '',
+        );
       }
       if (caseId == null) {
         final checkbox = container.querySelector(

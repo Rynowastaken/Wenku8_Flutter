@@ -324,9 +324,21 @@ String parseChapterContent(Document document) {
   final buffer = StringBuffer();
   final seenImages = <String>{};
 
+  var sawTruncationMarker = false;
+
   void flush() {
-    final value = normalizeText(buffer.toString());
+    var value = normalizeText(buffer.toString());
     buffer.clear();
+    final cleaned = normalizeText(
+      value.replaceAll(
+        RegExp(r'[（(]\s*(?:內容加載失敗|内容加载失败)[^）)]*[）)]'),
+        '',
+      ),
+    );
+    if (cleaned != value) {
+      sawTruncationMarker = true;
+      value = cleaned;
+    }
     if (value.isNotEmpty) blocks.add(value);
   }
 
@@ -343,6 +355,13 @@ String parseChapterContent(Document document) {
     if (node is! Element) return;
     final tag = node.localName?.toLowerCase() ?? '';
     if (const {'script', 'style', 'noscript', 'rt', 'rp'}.contains(tag)) return;
+    if (tag == 'div' && node.classes.contains('cgo')) return;
+    if (tag == 'center' &&
+        RegExp(
+          r'手機版頁面由於相容性|手机版页面由于兼容性|請使用手機閱讀|请使用手机阅读|zation\(\);',
+        ).hasMatch(node.text)) {
+      return;
+    }
     if (tag == 'img') {
       final url = _coverUrl(node);
       if (url != null) addImage(url);
@@ -377,12 +396,13 @@ String parseChapterContent(Document document) {
     visit(child);
   }
   flush();
-  if (blocks.isEmpty) throw const FormatException('章节正文为空');
-  final text = blocks.join('\n\n');
-  if (RegExp(r'內容加載失敗|内容加载失败|請使用手機閱讀|手机版页面由于兼容性|zation\(\);').hasMatch(text)) {
-    throw const FormatException('章节内容被来源截断，请稍后重试');
+  if (blocks.isEmpty) {
+    if (sawTruncationMarker) {
+      throw const FormatException('章节内容被来源截断，请稍后重试');
+    }
+    throw const FormatException('章节正文为空');
   }
-  return text;
+  return blocks.join('\n\n');
 }
 
 LinovelibReadInfo? parseChapterReadInfo(Document document) {

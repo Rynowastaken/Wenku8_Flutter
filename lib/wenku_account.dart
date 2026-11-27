@@ -48,6 +48,7 @@ class WenkuAccount extends ChangeNotifier {
   int? syncedAt;
   int get sessionRevision => 0;
   int get publicationRevision => 0;
+  bool get supportsSignIn => true;
   ReviewPageReader? get reviewReader => null;
   static String describeError(Object error) =>
       error is OnlineComponentUnavailable ||

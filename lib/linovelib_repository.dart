@@ -43,6 +43,7 @@ class LinovelibRepository extends NovelRepository
   final LinovelibClient _client;
   LinovelibClient get client => _client;
   final _details = <int, _Cached<Novel>>{};
+  final _missingDetails = <int, DateTime>{};
   final _catalogues = <int, _Cached<List<NovelChapter>>>{};
   final _contents = <(int, int), _Cached<String>>{};
   final _known = <int, Novel>{};
@@ -55,6 +56,7 @@ class LinovelibRepository extends NovelRepository
   static const _catalogAsset = 'assets/linovelib_catalog.json';
 
   static const _detailTtl = Duration(minutes: 20);
+  static const _missingDetailTtl = Duration(minutes: 5);
   static const _catalogueTtl = Duration(minutes: 20);
   static const _contentTtl = Duration(minutes: 20);
   static const _publicationTtl = Duration(hours: 6);
@@ -85,7 +87,23 @@ class LinovelibRepository extends NovelRepository
   @override
   Future<Novel?> find(int id) async {
     if (LinovelibIds.websiteBook(id) == null) return null;
-    return _loadDetail(id);
+    final cached = _details[id];
+    if (cached != null && cached.fresh(_detailTtl)) return cached.value;
+    final known = _known[id];
+    if (known != null) return known;
+    final index = await _loadIndex();
+    for (final entry in index) {
+      if (entry.book.id == id) {
+        _known[id] = entry.book;
+        return entry.book;
+      }
+    }
+    try {
+      return await _loadDetail(id);
+    } on LinovelibException catch (error) {
+      if (error.statusCode == 404) return null;
+      rethrow;
+    }
   }
 
   @override
@@ -398,6 +416,11 @@ class LinovelibRepository extends NovelRepository
   Future<Novel> _loadDetail(int id) async {
     final cached = _details[id];
     if (cached != null && cached.fresh(_detailTtl)) return cached.value;
+    final missingAt = _missingDetails[id];
+    if (missingAt != null &&
+        DateTime.now().difference(missingAt) < _missingDetailTtl) {
+      throw const LinovelibException('书籍不存在或已下架', statusCode: 404);
+    }
     final websiteId = LinovelibIds.websiteBook(id);
     if (websiteId == null) {
       throw const FormatException('这本书来自其他书源，请重新搜索添加');
@@ -412,8 +435,10 @@ class LinovelibRepository extends NovelRepository
                 .isNotEmpty ??
             false);
     if (!hasBook) {
+      _missingDetails[id] = DateTime.now();
       throw const LinovelibException('书籍不存在或已下架', statusCode: 404);
     }
+    _missingDetails.remove(id);
     var novel = parseNovelDetail(document, websiteId);
     final catalogue = _catalogues[id];
     if (catalogue != null && catalogue.fresh(_catalogueTtl)) {

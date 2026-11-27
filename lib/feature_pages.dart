@@ -381,15 +381,16 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                           Wrap(
                             spacing: 12,
                             children: [
-                              GlassTextButton(
-                                key: const ValueKey('account-sign'),
-                                onPressed: account.busy || account.signedToday
-                                    ? null
-                                    : () => _run(account.signIn, '今日签到已完成'),
-                                child: AppText(
-                                  account.signedToday ? '今日已签到' : '每日签到',
+                              if (account.supportsSignIn)
+                                GlassTextButton(
+                                  key: const ValueKey('account-sign'),
+                                  onPressed: account.busy || account.signedToday
+                                      ? null
+                                      : () => _run(account.signIn, '今日签到已完成'),
+                                  child: AppText(
+                                    account.signedToday ? '今日已签到' : '每日签到',
+                                  ),
                                 ),
-                              ),
                               GlassTextButton(
                                 onPressed: account.busy
                                     ? null
