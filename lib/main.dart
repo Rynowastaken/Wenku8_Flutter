@@ -12,7 +12,10 @@ import 'app_window_insets.dart';
 import 'app_licenses.dart';
 import 'app_repository.dart';
 import 'catalog.dart';
+import 'legacy_cover.dart';
+import 'legacy_transport.dart';
 import 'legacy_wenku_repository.dart';
+import 'linovelib_repository.dart';
 import 'library_state.dart';
 import 'local_platform.dart';
 import 'local_series_actions.dart';
@@ -33,9 +36,7 @@ import 'updates/app_updates.dart';
 import 'updates/ios_update_platform.dart';
 import 'updates/harmony_update_platform.dart';
 import 'updates/update_page.dart';
-import 'wenku_account.dart';
 import 'wenku_features.dart';
-import 'wenku_shelf_sync.dart';
 import 'publication_catalog.dart';
 import 'lan_reading_sync.dart';
 import 'lan_handoff_widgets.dart';
@@ -79,13 +80,17 @@ Future<void> main() async {
       WidgetsBinding.instance.platformDispatcher.platformBrightness,
   };
   SystemChrome.setSystemUIOverlayStyle(novelSystemUiStyle(brightness));
-  final WenkuAccount? account = LocalPlatform.fileActions
-      ? WenkuAccount()
-      : null;
-  const remote = LegacyWenkuRepository();
+  final linovelib = LocalPlatform.fileActions ? LinovelibRepository() : null;
+  final NovelRepository remote = linovelib ?? const LegacyWenkuRepository();
   final repository = LocalPlatform.fileActions
       ? await openApplicationLibrary(remote: remote, network: network)
       : const DemoNovelRepository();
+  if (linovelib != null) {
+    // Covers are fetched by the image cache; chapter illustrations use the
+    // URL-keyed transport. Both are installed before the first route builds.
+    LegacyCover.reader = linovelib.fetchCover;
+    LegacyTransport.illustrationReader = linovelib.fetchImage;
+  }
   if (repository is OfflineNovelRepository) {
     ReaderIllustrationCache.shared.offlineReader =
         repository.cache.readIllustration;
@@ -93,20 +98,9 @@ Future<void> main() async {
   if (repository is OfflineNovelRepository && repository.local != null) {
     await reconcileLocalSeries(repository.local!, state);
   }
-  final features = account != null
-      ? WenkuFeatures(
-          account: account,
-          // The authenticated novellist response already contains book metadata.
-          // Reuse its adapter, pagination and the existing account session.
-          publications: remote as PublicationCatalog,
-          shelfSync: WenkuShelfSync(
-            account: account,
-            library: state,
-            preferences: await SharedPreferences.getInstance(),
-            network: network,
-          )..start(),
-        )
-      : null;
+  // Linovelib is a read-only public catalogue without an account or cloud
+  // shelf. Keep the Wenku account/community scope closed in this build.
+  const features = null;
   final customSpeech = LocalPlatform.listening ? CustomSpeechSettings() : null;
   await customSpeech?.load();
   final listening = LocalPlatform.listening
@@ -126,6 +120,7 @@ Future<void> main() async {
       state: state,
       repository: repository,
       features: features,
+      publications: linovelib,
       listening: listening,
       network: network,
       updates: defaultTargetPlatform == TargetPlatform.android
@@ -152,7 +147,6 @@ Future<void> main() async {
     // frame. A service-created engine also gets a handler, with no auto-play.
     unawaited(prepareListeningService(listening).catchError((Object _) {}));
   }
-  if (features != null) unawaited(features.account.initialize());
 }
 
 class NovelApp extends StatefulWidget {
@@ -161,6 +155,7 @@ class NovelApp extends StatefulWidget {
     required this.state,
     required this.repository,
     this.features,
+    this.publications,
     this.listening,
     this.updates,
     this.network,
@@ -169,6 +164,7 @@ class NovelApp extends StatefulWidget {
   final LibraryState state;
   final NovelRepository repository;
   final WenkuFeatures? features;
+  final PublicationCatalog? publications;
   final ListeningController? listening;
   final AppUpdates? updates;
   final NetworkStatus? network;
@@ -180,6 +176,7 @@ class _NovelAppState extends State<NovelApp> with WidgetsBindingObserver {
   LibraryState get state => widget.state;
   NovelRepository get repository => widget.repository;
   WenkuFeatures? get features => widget.features;
+  PublicationCatalog? get publications => widget.publications;
   ListeningController? get listening => widget.listening;
   AppUpdates? get updates => widget.updates;
   final _updateNavigation = AppUpdateNavigation();
@@ -671,7 +668,7 @@ class _NovelAppState extends State<NovelApp> with WidgetsBindingObserver {
         _lastTypeface = state.appFontId;
         return MaterialApp(
           navigatorKey: _navigator,
-          title: '轻小说文库',
+          title: '哔哩轻小说',
           locale: state.language.locale ?? _systemLocale,
           supportedLocales: const [
             Locale('zh', 'CN'),
@@ -720,16 +717,19 @@ class _NovelAppState extends State<NovelApp> with WidgetsBindingObserver {
                             controller: listening,
                             child: LanSyncScope(
                               sync: _lanSync,
-                              child: WenkuFeaturesScope(
-                                features: features,
-                                child: ReaderHandoffScope(
-                                  navigation: _readerHandoff,
-                                  child: LanHandoffMonitor(
-                                    handoff: _lanSync?.handoff,
-                                    onContinue: _continueNearbyBook,
-                                    reduceMotion: state.effectiveReduceMotion,
-                                    noticeWrapper: _nearbyNotice,
-                                    child: child!,
+                              child: PublicationCatalogScope(
+                                catalog: publications,
+                                child: WenkuFeaturesScope(
+                                  features: features,
+                                  child: ReaderHandoffScope(
+                                    navigation: _readerHandoff,
+                                    child: LanHandoffMonitor(
+                                      handoff: _lanSync?.handoff,
+                                      onContinue: _continueNearbyBook,
+                                      reduceMotion: state.effectiveReduceMotion,
+                                      noticeWrapper: _nearbyNotice,
+                                      child: child!,
+                                    ),
                                   ),
                                 ),
                               ),

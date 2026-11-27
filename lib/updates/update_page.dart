@@ -344,7 +344,7 @@ class _AppUpdatePromptRoute extends PopupRoute<bool>
                                 ),
                                 const SizedBox(height: 6),
                                 AppText(
-                                  '轻小说文库 ${release.version.name}',
+                                  '哔哩轻小说 ${release.version.name}',
                                   style: TextStyle(
                                     color: Theme.of(
                                       context,
@@ -455,7 +455,7 @@ class AppUpdatePage extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
             ),
             title: const ArchiveRouteTitle(
-              title: '关于轻小说文库',
+              title: '关于哔哩轻小说',
               code: 'SYSTEM / ABOUT',
             ),
           ),
@@ -468,7 +468,7 @@ class AppUpdatePage extends StatelessWidget {
               padding.bottom + 32,
             ),
             children: [
-              const ArchiveSection(title: '轻小说文库', code: 'WENKU8 / FLUTTER'),
+              const ArchiveSection(title: '哔哩轻小说', code: 'LINOVELIB / FLUTTER'),
               const SizedBox(height: 12),
               AppText(
                 '当前版本 $version · 构建 $build',
@@ -616,7 +616,7 @@ class AppUpdatePage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const AppText(
-                      '基于 MewX 与原项目贡献者的轻小说文库 Android 客户端重构。原项目 GPL v2 或后续版本许可保留；本 Flutter 组合版本按 GPL v3 分发。',
+                      '基于 MewX 与原项目贡献者的轻小说 Android 客户端重构。原项目 GPL v2 或后续版本许可保留；本 Flutter 组合版本按 GPL v3 分发。',
                       style: TextStyle(height: 1.6),
                     ),
                     const SizedBox(height: 12),
@@ -633,7 +633,7 @@ class AppUpdatePage extends StatelessWidget {
                       key: const ValueKey('app-open-source-licenses'),
                       onPressed: () => showLicensePage(
                         context: context,
-                        applicationName: '轻小说文库',
+                        applicationName: '哔哩轻小说',
                         applicationVersion: currentAppVersion,
                         applicationLegalese:
                             'Copyright © MewX and contributors\nFlutter modifications © 2026 Wenku8 Flutter contributors',

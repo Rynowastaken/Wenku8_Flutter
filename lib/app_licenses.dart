@@ -7,7 +7,7 @@ void registerAppLicenses() {
   _registered = true;
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks(const [
-      'Wenku8 Flutter',
+      'Linovelib Flutter (Wenku8_Flutter fork)',
     ], await rootBundle.loadString('assets/licenses/GPL-3.0.txt'));
     yield LicenseEntryWithLineBreaks(const [
       'Source Han Serif CN / TW · Adobe',

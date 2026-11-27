@@ -1,4 +1,4 @@
-const currentReleaseSourcePolicy = '本 APP 仅支持轻小说文库及本地导入，不再支持其他源或自定义书源。';
+const currentReleaseSourcePolicy = '本 APP 仅支持哔哩轻小说及本地导入，不再支持其他源或自定义书源。';
 
 const projectFreeNotice = '''**免费与开源**
 
@@ -6,7 +6,7 @@ const projectFreeNotice = '''**免费与开源**
 
 const projectContentNotice = '''**内容来源与项目身份**
 
-「轻小说文库」仅为第三方阅读客户端，提供阅读界面与本地书籍管理，并非轻小说文库网站的官方应用。不运营在线书库、不自行发布小说资源；在线内容及可读状态一切以 Wenku8 为准，不提供因版权限制而停止开放的在线书籍阅读。本地书籍由用户自行合法导入，安装包不附带小说文件。''';
+「哔哩轻小说」仅为第三方阅读客户端，提供阅读界面与本地书籍管理，并非哔哩轻小说网站的官方应用。不运营在线书库、不自行发布小说资源；在线内容及可读状态一切以 tw.linovelib.com 为准，不提供因版权限制而停止开放的在线书籍阅读。本地书籍由用户自行合法导入，安装包不附带小说文件。''';
 
 const projectRightsNotice = '''**版权与使用提醒**
 

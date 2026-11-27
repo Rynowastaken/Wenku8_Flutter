@@ -1534,6 +1534,20 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
             fontSize: widget.preferences.statusFontSize,
           )
         : EdgeInsets.zero;
+    final layout = adjacent?.bookLayout ?? _bookLayout;
+    final headingExtent =
+        adjacent?.headingExtent ?? _publishedHeadingExtent ?? _headingExtent;
+    final bunkobonBounds = layout != null && layout.isBunkobon
+        ? Rect.fromLTRB(
+            layout.pages.first.left,
+            layout.pages.first.top,
+            layout.pages.last.right,
+            layout.pages.last.bottom,
+          ).shift(Offset(padding.left, padding.top + headingExtent))
+        : null;
+    final footerStyle = bunkobonBounds == null
+        ? informationStyle
+        : informationStyle.copyWith(fontSize: 11.5);
     return IgnorePointer(
       ignoring: spread != _restingSpread,
       child: SelectionContainer.disabled(
@@ -1613,11 +1627,21 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
               ),
             if (widget.bookTitle != null)
               Positioned(
-                left: padding.left,
-                right: padding.right,
-                bottom:
-                    (padding.bottom - ReaderScrollLocation.extentOf(context))
-                        .clamp(0.0, double.infinity),
+                left: bunkobonBounds == null
+                    ? padding.left
+                    : bunkobonBounds.left,
+                right: bunkobonBounds == null
+                    ? padding.right
+                    : _frameSize.width - bunkobonBounds.right,
+                bottom: bunkobonBounds == null
+                    ? (padding.bottom - ReaderScrollLocation.extentOf(context))
+                          .clamp(0.0, double.infinity)
+                    : (_frameSize.height - bunkobonBounds.bottom - 30.0).clamp(
+                        (padding.bottom -
+                                ReaderScrollLocation.extentOf(context))
+                            .clamp(0.0, double.infinity),
+                        double.infinity,
+                      ),
                 child: part(
                   information(
                     Row(
@@ -1627,7 +1651,7 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
                           child: ReaderChapterTitle(
                             text: title,
                             key: key('reader-bottom-chapter-title'),
-                            style: informationStyle,
+                            style: footerStyle,
                             active: spread == _restingSpread,
                             chrome: widget.chrome,
                             showWithChrome: false,
@@ -1640,7 +1664,7 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
                             count,
                             key: key('reader-page-count', leaf: leaves - 1),
                             maxLines: 1,
-                            style: informationStyle,
+                            style: footerStyle,
                           ),
                         ],
                       ],

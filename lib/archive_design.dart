@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'app_language.dart';
+import 'linovelib_ids.dart';
 
 import 'archive_motion.dart';
 import 'library_reflow.dart';
@@ -39,7 +40,13 @@ abstract final class ArchiveDesign {
     color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
   );
 
-  static String fileCode(int id) => 'WK-${id.toString().padLeft(5, '0')}';
+  static String fileCode(int id) {
+    final linovelib = LinovelibIds.websiteBook(id);
+    if (linovelib != null) {
+      return 'LN-${linovelib.toString().padLeft(5, '0')}';
+    }
+    return 'WK-${id.toString().padLeft(5, '0')}';
+  }
 }
 
 class ArchiveMasthead extends StatelessWidget {

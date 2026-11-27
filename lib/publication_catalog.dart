@@ -1,9 +1,31 @@
+import 'package:flutter/widgets.dart';
+
 import 'catalog.dart';
 
 class PublicationLibrary {
   const PublicationLibrary(this.id, this.name);
   final int id;
   final String name;
+}
+
+/// Source-neutral access to publication categories for the discovery filter.
+/// It stays independent from the Wenku account/community scope.
+class PublicationCatalogScope extends InheritedWidget {
+  const PublicationCatalogScope({
+    super.key,
+    required this.catalog,
+    required super.child,
+  });
+
+  final PublicationCatalog? catalog;
+
+  static PublicationCatalog? maybeOf(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<PublicationCatalogScope>()
+      ?.catalog;
+
+  @override
+  bool updateShouldNotify(PublicationCatalogScope oldWidget) =>
+      catalog != oldWidget.catalog;
 }
 
 abstract interface class PublicationCatalog {

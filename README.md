@@ -1,165 +1,161 @@
-# 轻小说文库 · Wenku8 Flutter
+# 嗶哩輕小說 · Linovelib Flutter（Wenku8_Flutter Fork）
+
+**Cross-platform Flutter Light Novel Reader for Linovelib (`tw.linovelib.com`) & Local Books (EPUB / TXT / MOBI / AZW3 / PDF / DOCX) — featuring Tablet Bunkobon (`105:148`) layout, Japanese/Chinese Tategaki (直排翻頁), 3D Bookshelf, Edge TTS Listening, WebDAV/S3 Sync, and Reading Statistics on Android, iOS & HarmonyOS.**
 
 > [!IMPORTANT]
-> **本项目仅为第三方阅读客户端，提供阅读界面与本地书籍管理，不运营在线书库、不自行发布小说资源，安装包不附带小说文件。在线内容及可读状态一切以 Wenku8 为准；不提供因版权限制而停止开放的在线书籍阅读。**
+> **本專案僅為第三方閱讀用戶端，提供閱讀介面與本機書籍管理，不營運線上書庫、不自行發布小說資源，安裝包不附帶小說檔案。線上內容及可讀狀態一切以 tw.linovelib.com 為準；不提供因版權限制而停止開放的線上書籍閱讀。**
 >
-> **本应用完全免费，无任何赞助、打赏或付费渠道。** 不出售会员、激活码或功能解锁服务。任何以本项目或开发者名义收费、募捐、索要赞助的行为均与本项目无关，请勿付款。
+> **本應用程式完全免費、開源，無任何贊助、打賞或付費管道。** 不販售會員、啟用碼或功能解鎖服務。任何以本專案或開發者名義收費、募捐、索取贊助的行為均與本專案無關，請勿付款。
 >
-> **仅支持轻小说文库及本地导入，不再支持其他源或自定义书源。** 支持 Android、iOS 与 HarmonyOS，并非轻小说文库网站的官方应用。
-
-## 下载与更新
-
-当前版本：**[Android 0.5.1](https://github.com/mikufoxxx/Wenku8_Flutter/releases/tag/v0.5.1)** · **[iOS / HarmonyOS 0.5.1](https://github.com/mikufoxxx/Wenku8_Flutter/releases/tag/v0.5.1)**。
-
-Android 提供正式签名 APK；iOS 与 HarmonyOS 提供未签名安装包。请按设备选择：
-
-### [镜像下载 →](https://git.3952039.xyz/#releases)　[GitHub Releases →](https://github.com/mikufoxxx/Wenku8_Flutter/releases/latest)
-
-| 你的设备 | 选择安装包 |
-| :-- | :-- |
-| 近年的 Android 手机、平板 | [**ARM64 APK · 推荐**](https://github.com/mikufoxxx/Wenku8_Flutter/releases/download/v0.5.1/wenku8-0.5.1-arm64-v8a.apk) |
-| 旧款 32 位 ARM 设备 | [ARMv7 APK](https://github.com/mikufoxxx/Wenku8_Flutter/releases/download/v0.5.1/wenku8-0.5.1-armeabi-v7a.apk) |
-| x86_64 设备或模拟器 | [x86_64 APK](https://github.com/mikufoxxx/Wenku8_Flutter/releases/download/v0.5.1/wenku8-0.5.1-x86_64.apk) |
-| iPhone、iPad | [未签名 IPA](https://github.com/mikufoxxx/Wenku8_Flutter/releases/download/v0.5.1/wenku8-0.5.1-ios-unsigned.ipa) · 需自行签名 |
-| HarmonyOS 设备 | [未签名 HAP](https://github.com/mikufoxxx/Wenku8_Flutter/releases/download/v0.5.1/wenku8-0.5.1-harmony-unsigned.hap) · 需自行签名 |
-
-**Android 正式版沿用原包名与签名，可直接覆盖升级，不要先卸载旧版。** iOS／HarmonyOS 包不能直接安装，需自行完成签名；覆盖安装取决于签名与设备授权。 升级、整理存储或同步前，请先备份重要数据。
-
-App 内打开 **我的 → 关于 → 检查更新**，优先走镜像，连接失败时自动回退到 GitHub，无需选择线路。
-
-[完整更新说明](CHANGELOG.md) · [阅读指南](docs/READER.md) · [反馈问题](https://github.com/mikufoxxx/Wenku8_Flutter/issues)
+> **本分支將線上書源切換為嗶哩輕小說（Linovelib），同時支援本機多格式匯入；不再支援其他線上書源或自訂書源。** 支援 Android、iOS 與 HarmonyOS，並非嗶哩輕小說網站的官方應用程式。
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-cover-dark.svg" />
-    <img src="docs/images/readme-cover-light.svg" width="100%" alt="轻小说文库 · 把故事，留在手边。Android、iOS 与 HarmonyOS 轻小说阅读客户端" />
+    <img src="docs/images/readme-cover-light.svg" width="100%" alt="Linovelib Flutter · 嗶哩輕小說第三方閱讀器 · Android、iOS 與 HarmonyOS 輕小說閱讀用戶端" />
   </picture>
 </p>
 
 <p align="center">
-  <a href="https://github.com/mikufoxxx/Wenku8_Flutter/actions/workflows/flutter-ci.yml"><img src="https://github.com/mikufoxxx/Wenku8_Flutter/actions/workflows/flutter-ci.yml/badge.svg?branch=master&amp;event=push" alt="Source checks" /></a>
-  <a href="https://github.com/mikufoxxx/Wenku8_Flutter/releases/latest"><img src="https://img.shields.io/github/v/release/mikufoxxx/Wenku8_Flutter?style=flat-square&amp;logo=github&amp;color=blue" alt="Release" /></a>
-  <a href="https://github.com/mikufoxxx/Wenku8_Flutter/releases"><img src="https://img.shields.io/github/downloads/mikufoxxx/Wenku8_Flutter/total?style=flat-square&amp;label=GitHub%20Downloads&amp;color=brightgreen" alt="GitHub Release 下载量" /></a>
-  <img src="https://img.shields.io/badge/Android-signed-3DDC84?style=flat-square&amp;logo=android&amp;logoColor=white" alt="Android · 正式签名" />
-  <img src="https://img.shields.io/badge/iOS-self--sign-555555?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="iOS · 自行签名" />
-  <img src="https://img.shields.io/badge/HarmonyOS-self--sign-3157D5?style=flat-square" alt="HarmonyOS · 自行签名" />
-  <img src="https://img.shields.io/badge/Android_build-261-65756E?style=flat-square" alt="Android build 261" />
+  <a href="https://github.com/Rynowastaken/Wenku8_Flutter/actions/workflows/flutter-ci.yml"><img src="https://github.com/Rynowastaken/Wenku8_Flutter/actions/workflows/flutter-ci.yml/badge.svg?branch=master&amp;event=push" alt="Source checks" /></a>
+  <a href="https://github.com/Rynowastaken/Wenku8_Flutter/releases"><img src="https://img.shields.io/github/v/release/Rynowastaken/Wenku8_Flutter?style=flat-square&amp;logo=github&amp;color=blue" alt="Release" /></a>
+  <img src="https://img.shields.io/badge/Source-Linovelib%20%28tw.linovelib.com%29-2E7D32?style=flat-square" alt="Source: Linovelib" />
+  <img src="https://img.shields.io/badge/Tablet-Bunkobon%20105%3A148-6D4C41?style=flat-square" alt="Tablet Bunkobon Layout" />
+  <img src="https://img.shields.io/badge/Android-Flutter-3DDC84?style=flat-square&amp;logo=android&amp;logoColor=white" alt="Android" />
+  <img src="https://img.shields.io/badge/iOS-self--sign-555555?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="iOS" />
+  <img src="https://img.shields.io/badge/HarmonyOS-self--sign-3157D5?style=flat-square" alt="HarmonyOS" />
   <a href="assets/licenses/GPL-3.0.txt"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square&amp;logo=gnu&amp;logoColor=white" alt="GPL 3.0" /></a>
 </p>
 
-奶白玻璃、档案式排版与立体书架。从发现一本书，到整理本地书库、离线阅读和听书，让每一次打开都回到故事本身。
+奶白玻璃、檔案式排版、文庫本比例平板閱讀與立體書架。從發現一本書，到整理本機書庫、離線閱讀、區域網路續讀與線上聽書，讓每一次開啟都回到故事本身。
 
-## 界面一览
+## 本分支特色 / Fork Highlights
+
+基於上游 [mikufoxxx/Wenku8_Flutter](https://github.com/mikufoxxx/Wenku8_Flutter)（`v0.5.1`）分支改造，重點包含以下適配與最佳化：
+
+### 1. 嗶哩輕小說（Linovelib）線上書源整合
+- **完整唯讀目錄與正文適配**：線上書目發現、分類與排行瀏覽、出版文庫、詳情簡介、分卷目錄、多頁章節正文拼接、插圖載入與離線章節快取皆來自 [嗶哩輕小說](https://tw.linovelib.com/)。
+- **簡繁搜尋與多級備援**：站點原生「搜尋」為 Google Programmable Search；應用程式內一般搜尋優先比對隨包索引 `assets/linovelib_catalog.json`（透過 OpenCC 支援簡體中文與繁體中文檢索），未命中時備援至 Brave 網頁搜尋，並支援於官網 CSE 搜尋、依分類瀏覽或直接輸入書籍 ID（`LN-xxxxx`）開啟。
+- **獨立命名空間**：Linovelib 書目與章節使用獨立 ID 區間（`LN-xxxxx`），與本機匯入書籍及舊版紀錄互不衝突；該來源為公開唯讀目錄，不包含帳號登入、雲端書架、書評或簽到功能。
+
+### 2. 平板閱讀與文庫本（Bunkobon）版式最佳化
+- **直向平板單頁修正**：修正直向平板（如小米平板 6、iPad 等寬螢幕直向裝置）被強制拆分為雙欄對頁的問題——直向維持單頁專注排版，橫向或硬體雙螢幕鉸鏈裝置自動啟用雙頁對開。
+- **文庫本（Bunkobon `105:148`）比例與緊湊排版**：平板端保持純淨全螢幕紙面背景，依日式文庫本（A6 `105 mm × 148 mm`）比例置中顯示正文區域；在預設字級下自動採用更貼近實體文庫本的緊湊字級與行距（直排約 16–18 列 × 40–42 字／列），並將頁尾章節名與頁碼對齊正文左右邊緣。捲動模式在平板端同樣置中至文庫本閱讀欄寬。
+- **空書架平板置中修正**：修正平板多欄格線下「書架還空著」空狀態偏移至左側欄的問題，使其於全寬中置中顯示。
+
+## 介面一覽
 
 <p align="center">
-  <img src="docs/images/discovery.png" width="30%" alt="发现 · 立体书架与书籍探索" />
+  <img src="docs/images/discovery.png" width="30%" alt="發現 · 立體書架與書籍探索" />
   &nbsp;
-  <img src="docs/images/reader.png" width="30%" alt="阅读 · 横排、竖排与沉浸阅读" />
+  <img src="docs/images/reader.png" width="30%" alt="閱讀 · 橫排、直排與文庫本沉浸閱讀" />
   &nbsp;
-  <img src="docs/images/settings.png" width="30%" alt="配色 · 按自己的习惯调整" />
+  <img src="docs/images/settings.png" width="30%" alt="配色 · 依個人習慣調整" />
 </p>
 
-<p align="center"><sub>发现故事　／　沉浸阅读　／　按习惯定制<br />界面书目为演示数据</sub></p>
+<p align="center"><sub>發現故事　／　文庫本沉浸閱讀　／　依習慣自訂<br />介面書目為示範資料</sub></p>
 
-## 阅读，按你的习惯
+## 從原始碼建置 / Build from Source
 
-- **横排、竖排或滚动**：大屏支持对页，曲面纸页随手指翻动、从书缝展开；也可选择段落接续、平移、覆盖或无动画，调整翻页速度。
-- **一本书，一套排版**：字体、字号、字重、字间距、行距与四边页边距独立保存；缩进、对齐和背景浓度支持透明预览。
-- **让颜色和字形合拍**：系统莫奈、自选主色或图片取色；阅读器独立配色与自定义背景。多款阅读字体按需下载、离线使用、随时删除，不预装阅读字库；也可导入 TTF／OTF，App 与阅读器分别选择。
-- **随时找到读到哪里**：分卷目录、本章／整书进度、章内与整书查找、音量键翻页、自动阅读和跨章衔接。封面与插图支持双指缩放及原图保存。
-- **双语各取所需**：保留原书浅字样式，按书选择显示语言；朗读语言独立选择，每种语言可单独配置音色，缺少匹配语音模型时跳过。
+> 本分支程式碼可完整建置 Android / iOS / HarmonyOS 用戶端；如需直接安裝，請使用儲存庫 [Releases](https://github.com/Rynowastaken/Wenku8_Flutter/releases)（若有發布）或依下方步驟於本機建置。
 
-## 把阅读足迹，留成一张图
+```bash
+git clone https://github.com/Rynowastaken/Wenku8_Flutter.git
+cd Wenku8_Flutter
+flutter pub get
 
-- **分清每一种记录**：总览、节律、书目、记号与触摸分类查看，支持预设时间范围与自定义日期；没有数据的字段和图表自动省略。
-- **报告不只是换颜色**：八套独立版式，按需选择阅读日历、节律、相伴书单、进度和摘录；预览与导出使用同一份内容。
-- **为喜欢的句子留一页**：书签、批注、摘录图片与阅读纪念；四季插图随实际季节切换，保存图片使用短暂提示。
+# 建置 Android Release APK（建議搭配 JDK 17 以相容 Gradle 8.14）
+flutter build apk --release --split-per-abi
+```
 
-## 桌面上，也有你的阅读日常
+- **Android** 會產生 `app-arm64-v8a-release.apk`、`app-armeabi-v7a-release.apk` 與 `app-x86_64-release.apk`。
+- **iOS / HarmonyOS** 建置與簽章說明請參閱 [建置指南](docs/RELEASING.md)。
 
-今日阅读、本周热力、阅读日历、阅读纪念与摘录卡，搭配四季手帐等五种样式。每张小组件独立选择内容与外观，可同时放置多张；提供小、中、大三种尺寸和浅色／深色模式。
+[完整更新說明](CHANGELOG.md) · [閱讀指南](docs/READER.md) · [搜尋指南](docs/SEARCH.md) · [回報問題](https://github.com/Rynowastaken/Wenku8_Flutter/issues)
 
-点击统计进入统计页，点击最近阅读继续上次位置，摘录卡可直接换一条。Android 使用应用内配置，iOS 使用系统 WidgetKit 编辑入口，HarmonyOS 使用表单配置。
+## 閱讀，依你的習慣
 
-## 书库，不止一种整理方式
+- **橫排、直排（Tategaki）或捲動**：大螢幕橫向支援雙頁對開，曲面紙頁隨手指翻動、從書縫展開；亦可選擇段落接續、平移、覆蓋或無動畫，調整翻頁速度。平板端自動適配 `105:148` 文庫本比例。
+- **一本書，一套排版**：字體、字級、字重、字距、行距與四邊頁邊距獨立儲存；縮排、對齊與背景濃度支援透明預覽。
+- **讓顏色與字形合拍**：系統莫內取色、自選主色或圖片取色；閱讀器獨立配色與自訂背景。多款閱讀字體依需求下載、離線使用、隨時刪除，不預先內建閱讀字庫；亦可匯入 TTF／OTF，App 與閱讀器分別選擇。
+- **隨時找到讀到哪裡**：分卷目錄、本章／整書進度、章內與整書搜尋、音量鍵翻頁、自動閱讀與跨章銜接。封面與插圖支援雙指縮放及原圖儲存。
+- **雙語各取所需**：保留原書淺字樣式，依書選擇簡體／繁體顯示語言；朗讀語言獨立選擇，每種語言可單獨設定音色，缺少相符語音模型時略過。
 
-- **立体与列表**：循环轮播、惯性吸附与触觉反馈，也可只用列表。分类、阅读状态和书籍来源一起筛选；本地书库可独立管理，也可与书架合并。
-- **先选择，再导入**：支持多选文件、扫描共享存储或指定文件夹；扫描后勾选书籍再导入，同系列分卷统一确认合并。
-- **默认关联原文件**：覆盖现有支持格式，也可选择复制到应用；TXT 使用目录索引，EPUB 按需读取资源，其他格式保留必要的转换文件和缓存。请保留关联的原文件；文件移动或权限失效后可重新关联，保留进度和书签。
-- **保留原书的细节**：EPUB 注音、注释弹窗、常见对齐、分隔线与混合横竖排；TXT 可自定义目录。在线书籍支持章节与插图缓存，不提供整书文件下载或导出。
-- **批量整理，更少重复**：多选后移动分类、移出或删除；更换封面、恢复原书封面，也可手动升级旧 EPUB 排版和整理重复资源，保留原书、目录、进度与书签。
+## 把閱讀足跡，留成一張圖
+
+- **分清每一種紀錄**：總覽、節律、書目、記號與觸控分類檢視，支援預設時間範圍與自訂日期；沒有資料的欄位與圖表自動省略。
+- **報告不只是換顏色**：八套獨立版式，依需求選擇閱讀日曆、節律、相伴書單、進度與摘錄；預覽與匯出使用同一份內容。
+- **為喜歡的句子留一頁**：書籤、批註、摘錄圖片與閱讀紀念；四季插圖隨實際季節切換，儲存圖片使用短暫提示。
+
+## 桌面上，也有你的閱讀日常
+
+今日閱讀、本週熱力、閱讀日曆、閱讀紀念與摘錄卡，搭配四季手帳等五種樣式。每張小工具獨立選擇內容與外觀，可同時放置多張；提供小、中、大三種尺寸與淺色／深色模式。
+
+點擊統計進入統計頁，點擊最近閱讀繼續上次位置，摘錄卡可直接換下一則。Android 使用應用程式內設定，iOS 使用系統 WidgetKit 編輯入口，HarmonyOS 使用表單設定。
+
+## 書庫，不止一種整理方式
+
+- **立體與清單**：循環輪播、慣性吸附與觸覺回饋，也可只用清單。分類、閱讀狀態與書籍來源一起篩選；本機書庫可獨立管理，也可與書架合併。
+- **先選擇，再匯入**：支援多選檔案、掃描共用儲存空間或指定資料夾；掃描後勾選書籍再匯入，同系列分卷統一確認合併。
+- **預設關聯原檔案**：涵蓋現有支援格式，亦可選擇複製到應用程式；TXT 使用目錄索引，EPUB 依需求讀取資源，其他格式保留必要的轉換檔案與快取。請保留關聯的原檔案；檔案移動或權限失效後可重新關聯，保留進度與書籤。
+- **保留原書的細節**：EPUB 注音、註解彈窗、常見對齊、分隔線與混合橫直排；TXT 可自訂目錄。線上書籍支援章節與插圖快取，不提供整書檔案下載或匯出。
+- **批次整理，減少重複**：多選後移動分類、移出或刪除；更換封面、恢復原書封面，亦可手動升級舊 EPUB 排版與整理重複資源，保留原書、目錄、進度與書籤。
 
 <details>
-<summary><b>支持的格式与网盘入口</b></summary>
+<summary><b>支援的格式與雲端匯入入口（EPUB / TXT / MOBI / AZW3 / PDF / WebDAV / S3）</b></summary>
 
-支持 TXT、EPUB、MOBI／AZW／AZW3／PRC、FB2、PDF、DOC／DOCX、RTF、HTML、Markdown 与 ZIP。书名、作者、封面和分卷顺序可调整。
+支援 TXT、EPUB、MOBI／AZW／AZW3／PRC、FB2、PDF、DOC／DOCX、RTF、HTML、Markdown 與 ZIP。書名、作者、封面與分卷順序皆可調整。
 
-可通过 OpenList／WebDAV、夸克网盘（实验性）导入；OneDrive、Google Drive 等可使用系统云文档入口，手动合并同步原书与阅读记录。
+可透過 OpenList／WebDAV、夸克網盤（實驗性）匯入；OneDrive、Google Drive 等可使用系統雲端文件入口，手動合併同步原書與閱讀紀錄。
 
-[网盘导入指南 →](docs/CLOUD_IMPORT.md)
+[網盤匯入指南 →](docs/CLOUD_IMPORT.md)
 
 </details>
 
-## 读到哪里，都能接着读
+## 讀到哪裡，都能接著讀
 
-- **局域网续读**：同一 Wi-Fi 自动发现，首次两端确认后自动重连。在「目录 → 章节进度 → 在其他设备上续读」选择设备，缺书时一并传送，已有同一本书时只传位置。
-- **S3 云端同步**：通过 S3／兼容存储手动合并原书、阅读进度、书签与分类；导入连接和同步目的地分别设置。
-- **离线查词**：导入 MDict、StarDict 或 Kindle 词典，在阅读时本地查词。
-- **书签与分类同步**：两台 App 保持前台时自动接续较新的进度，增量同步书签和分类；同时修改的记录可在冲突页选择保留。
-- **留下喜欢的句子**：长按正文选句或段落，复制、加入书签或快速查看本卷插图。书签可分类、定位高亮，也可分享成带图标水印的图片。
-- **换一种方式听故事**：自然在线音色、自定义 Microsoft SSML 接口，或手机已安装的系统 TTS 引擎。支持 0.5～3 倍速、段落跟随、睡眠定时、后台与锁屏控制；离线能力取决于引擎和音色。
+- **區域網路續讀**：同一 Wi-Fi 自動探索，首次兩端確認後自動重連。於「目錄 → 章節進度 → 在其他裝置上續讀」選擇裝置，缺書時一併傳送，已有同一本書時只傳送閱讀位置。
+- **S3 雲端同步**：透過 S3／相容儲存空間手動合併原書、閱讀進度、書籤與分類；匯入連線與同步目的地分別設定。
+- **離線查詞**：匯入 MDict、StarDict 或 Kindle 詞典，在閱讀時於本機查詞。
+- **書籤與分類同步**：兩台 App 保持前景時自動接續較新的進度，增量同步書籤與分類；同時修改的紀錄可於衝突頁選擇保留。
+- **留下喜歡的句子**：長按正文選句或段落，複製、加入書籤或快速檢視本卷插圖。書籤可分類、定位突顯，亦可分享成帶圖示浮水印的圖片。
+- **換一種方式聽故事**：自然線上音色（Edge TTS）、自訂 Microsoft SSML 介面，或手機已安裝的系統 TTS 引擎。支援 0.5～3 倍速、段落跟隨、睡眠定時、背景與鎖定畫面控制；離線能力取決於引擎與音色。
 
 <details>
-<summary><b>更多：发现、账号与阅读偏好</b></summary>
+<summary><b>更多：閱讀偏好、離線快取與效能設定</b></summary>
 
-- **书籍发现**：分类、排行、出版文库，按书名、作者或标签搜索；点作者或标签继续浏览相关作品。[搜索指南 →](docs/SEARCH.md)
-- **账号与社区**：文库账号、云书架、书评与回复。
-- **阅读操作**：分区点按可选左右两侧都翻下一页；发现、书架和本地页可分别设置点书直接续读，再从阅读器进入详情。
-- **离线与备份**：失败续缓存、缓存管理、阅读历史与本地备份。
-- **主题图标**：桌面图标可跟随系统主题取色，开关独立控制。
-- **中文支持**：简体中文、香港繁体与台湾繁体，可跟随系统或手动选择。
-- **使用方式**：可在 App 内强制竖屏，不影响其他应用旋转；无网时保留可离线阅读的书，阅读器模式随本地／合并书架设置联动。
-- **性能与动效**：帧率偏好和低性能模式，玻璃折射、模糊、过渡、动态图标与立体书架可分别调整；振动支持总开关，以及按钮、书架等分类开关、强度与试振。
+- **書籍發現**：分類、排行、出版文庫，依書名、作者、標籤或 ID 搜尋；點擊作者或標籤繼續瀏覽相關作品。[搜尋指南 →](docs/SEARCH.md)
+- **閱讀操作**：分區點按可選左右兩側皆翻下一頁；發現、書架與本機頁可分別設定點書直接續讀，再從閱讀器進入詳情。
+- **離線與備份**：失敗續快取、快取管理、閱讀歷史與本機備份。
+- **主題圖示**：桌面圖示可跟隨系統主題取色，開關獨立控制。
+- **中文支援**：簡體中文、香港繁體與台灣繁體，可跟隨系統或手動選擇。
+- **使用方式**：可在 App 內強制直向顯示，不影響其他應用程式旋轉；無網路時保留可離線閱讀的書，閱讀器模式隨本機／合併書架設定連動。
+- **效能與動效**：更新率偏好與低效能模式，玻璃折射、模糊、過渡、動態圖示與立體書架可分別調整；震動支援總開關，以及按鈕、書架等分類開關、強度與試震。
 
 </details>
 
-## 使用与内容说明
+## 使用與內容說明
 
-在线书目与内容来自轻小说文库（Wenku8），本地书籍由用户自行导入。小说、封面和插图归各自权利人所有，源码许可不授予内容使用权。请仅使用有权访问的内容，遵守来源网站规则，不得绕过访问限制、破解 DRM，或未经许可复制、传播、出售内容。
+線上書目與內容來自嗶哩輕小說（`tw.linovelib.com`），本機書籍由使用者自行匯入。小說、封面與插圖歸各自權利人所有，原始碼授權不授予內容使用權。請僅使用有權存取的內容，遵守來源網站規則，不得繞過存取限制、破解 DRM，或未經許可複製、傳播、販售內容。
 
-第三方服务可能调整、限流或停止。反馈问题时不要附带密码、Cookie 或令牌。
+第三方服務可能調整、限流或停止。回報問題時請勿附帶密碼、Cookie 或權杖。
 
-## 开发与参与
+## 致謝與授權 / Credits & License
 
-欢迎通过 [Issues](https://github.com/mikufoxxx/Wenku8_Flutter/issues) 反馈问题，或通过 Pull Request 参与开发。反馈请附 App 版本、设备与系统版本和复现步骤。
+- **上游 Flutter 專案**：本儲存庫 Fork 自 [**mikufoxxx/Wenku8_Flutter**](https://github.com/mikufoxxx/Wenku8_Flutter)（`v0.5.1`），感謝原作者在 Flutter 閱讀引擎、直排排版、立體書架、統計報告、桌面小工具與本機多格式解析上的卓越工作。
+- **原始 Android 專案**：上游專案基於 [MewX/light-novel-library_Wenku8_Android](https://github.com/MewX/light-novel-library_Wenku8_Android) 重構，感謝 MewX、Baby Pepper（SeraphRoy）、Jack Liu（aaassseee）及原專案貢獻者。
+- **應用程式原始碼**：保留 [GPL v2 或後續版本聲明](LICENSE)，本 Flutter 組合版本依 [GPL v3](assets/licenses/GPL-3.0.txt) 散佈。
+- **可下載字體**：遵循各自的 SIL OFL 1.1 授權。
+- **線上語音適配**：[rany2/edge-tts](https://github.com/rany2/edge-tts)，[LGPL v3](assets/licenses/edge-tts.txt)。
 
-<details>
-<summary><b>源码快照说明</b></summary>
-
-仓库提供部分实现供参考，包含未随快照提供的模块引用，不能独立构建，也不是 Release 安装包的完整对应源码。Release 中的安装包仍为完整功能版本；请从上方安装包链接下载，不要将 GitHub 自动生成的 Source code 压缩包当作安装包。
-
-[Source checks](https://github.com/mikufoxxx/Wenku8_Flutter/actions/workflows/flutter-ci.yml) 仅检查公开文件清单与上传边界，不构建或更改发行版。
-
-[构建指南 →](docs/RELEASING.md)
-
-</details>
-
-## 致谢与许可
-
-基于 [MewX/light-novel-library_Wenku8_Android](https://github.com/MewX/light-novel-library_Wenku8_Android) 重构。感谢 MewX、Baby Pepper（SeraphRoy）、Jack Liu（aaassseee）及原项目贡献者。
-
-- **应用源码**：保留 [GPL v2 或后续版本声明](LICENSE)，本 Flutter 组合版本按 [GPL v3](assets/licenses/GPL-3.0.txt) 分发。
-- **可下载字体**：遵循各自的 SIL OFL 1.1 许可。
-- **在线语音适配**：[rany2/edge-tts](https://github.com/rany2/edge-tts)，[LGPL v3](assets/licenses/edge-tts.txt)。
-
-[NOTICE](NOTICE) · [第三方组件说明](docs/THIRD_PARTY.md) · [LINUX DO 社区](https://linux.do/)
+[NOTICE](NOTICE) · [第三方元件說明](docs/THIRD_PARTY.md) · [LINUX DO 社群](https://linux.do/)
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=mikufoxxx%2Fwenku8_flutter&type=date&releases=&legend=bottom-right">
+<a href="https://www.star-history.com/?repos=Rynowastaken%2FWenku8_Flutter&type=date&releases=&legend=bottom-right">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=mikufoxxx/wenku8_flutter&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=mikufoxxx/wenku8_flutter&type=date&legend=top-left" />
-    <img src="https://api.star-history.com/chart?repos=mikufoxxx/wenku8_flutter&type=date&legend=top-left" width="100%" alt="Star History Chart" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Rynowastaken/Wenku8_Flutter&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Rynowastaken/Wenku8_Flutter&type=date&legend=top-left" />
+    <img src="https://api.star-history.com/chart?repos=Rynowastaken/Wenku8_Flutter&type=date&legend=top-left" width="100%" alt="Star History Chart" />
   </picture>
 </a>

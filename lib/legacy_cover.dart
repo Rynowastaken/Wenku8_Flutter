@@ -3,11 +3,16 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'online_component.dart';
 
-/// Bounded cover cache. Source previews use local seeds only.
+/// Bounded cover cache. Online builds inject a URL-aware reader once at
+/// startup; local fixtures continue to use [seedLocalBytes].
 abstract final class LegacyCover {
-  static final _cache = LegacyCoverCache(request: (_) => unavailableOnline());
+  static Future<Uint8List> Function(int aid, String? url)? reader;
+  static final _cache = LegacyCoverCache(
+    request: (aid, url) => reader?.call(aid, url) ?? unavailableOnline(),
+  );
   static Uint8List? peek(int aid, {String? url}) => _cache.peek(aid);
-  static Future<Uint8List> bytes(int aid, {String? url}) => _cache.load(aid);
+  static Future<Uint8List> bytes(int aid, {String? url}) =>
+      _cache.load(aid, url: url);
 
   /// Explicit local fixtures never query a remote cover endpoint.
   static void seedLocalBytes(int aid, Uint8List bytes) =>
@@ -23,7 +28,7 @@ class LegacyCoverCache {
     DateTime Function()? now,
   }) : now = now ?? DateTime.now,
        assert(maxBytes > 0 && maxEntries > 0);
-  final Future<Uint8List?> Function(int) request;
+  final Future<Uint8List?> Function(int, String?) request;
   final int maxBytes, maxEntries;
   final Duration retryDelay;
   final DateTime Function() now;
@@ -65,7 +70,7 @@ class LegacyCoverCache {
     }
   }
 
-  Future<Uint8List> load(int aid) {
+  Future<Uint8List> load(int aid, {String? url}) {
     if (aid <= 0) return Future.error(ArgumentError('Invalid cover ID'));
     final entry = _touch(aid);
     if (entry != null) return entry.future;
@@ -79,7 +84,7 @@ class LegacyCoverCache {
     _pending[aid] = future;
     unawaited(() async {
       try {
-        final image = await request(aid);
+        final image = await request(aid, url);
         if (image == null || image.isEmpty) throw const FormatException('封面为空');
         final bytes = image.asUnmodifiableView();
         if (identical(_pending[aid], future)) {

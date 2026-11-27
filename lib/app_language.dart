@@ -33,6 +33,7 @@ abstract final class ChineseText {
   static final _cache = <(String, bool, String), String>{};
   static int _cacheUnits = 0;
   static Future<_Lexicon>? _searchLexicon;
+  static Future<_TraditionalSearchLexicon>? _traditionalSearchLexicon;
 
   /// Normalize queries for the simplified catalogue, not the user's stored
   /// book text or display preference. Dictionaries load only on first search.
@@ -45,6 +46,31 @@ abstract final class ChineseText {
           rootBundle.loadString('assets/opencc/$name.txt'),
       ]);
       return compute(_readSearchLexicon, sources);
+    }());
+    return lexicon.convert(source);
+  }
+
+  /// Normalize a query for the traditional Linovelib catalogue.
+  ///
+  /// Simplified input is converted to Traditional, then Taiwan variants are
+  /// canonicalized (e.g. 群→羣→群, 秘密→祕密→秘密). This is the same chain
+  /// used for zh-TW display, so both simplified and traditional queries match.
+  static Future<String> traditionalSearchQuery(String source) async {
+    if (!RegExp(r'[\u3400-\u9fff]').hasMatch(source)) return source;
+    final lexicon = await (_traditionalSearchLexicon ??= () async {
+      const names = [
+        'STPhrases',
+        'STCharacters',
+        'TWPhrasesIT',
+        'TWPhrasesName',
+        'TWPhrasesOther',
+        'TWVariants',
+      ];
+      final sources = await Future.wait([
+        for (final name in names)
+          rootBundle.loadString('assets/opencc/$name.txt'),
+      ]);
+      return compute(_readTraditionalSearchLexicon, sources);
     }());
     return lexicon.convert(source);
   }
@@ -168,6 +194,21 @@ _Lexicon _readSearchLexicon(List<String> sources) {
   }
   return _Lexicon(words);
 }
+
+class _TraditionalSearchLexicon {
+  const _TraditionalSearchLexicon(this.standard, this.phrases, this.variants);
+  final _Lexicon standard, phrases, variants;
+
+  String convert(String source) =>
+      variants.convert(phrases.convert(standard.convert(source)));
+}
+
+_TraditionalSearchLexicon _readTraditionalSearchLexicon(List<String> sources) =>
+    _TraditionalSearchLexicon(
+      _readSearchLexicon([sources[0], sources[1]]),
+      _readSearchLexicon([sources[2], sources[3], sources[4]]),
+      _readSearchLexicon([sources[5]]),
+    );
 
 Map<String, _Lexicon> _readLexicons(Map<String, String> sources) {
   Map<String, String> read(List<String> names) {

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'app_ui.dart';
 import 'app_window_insets.dart';
@@ -103,6 +104,7 @@ import 'reader_embedded_vertical.dart';
 import 'lan_reading_sync.dart';
 import 'lan_reading_page.dart';
 import 'reader_pagination.dart';
+import 'reader_book_layout.dart';
 import 'reader_paged_view.dart';
 import 'reader_vertical_text.dart';
 import 'reader_reflow.dart';
@@ -123,6 +125,7 @@ import 'ui_notifiers.dart';
 import 'route_identity.dart';
 import 'feature_pages.dart';
 import 'wenku_features.dart';
+import 'publication_catalog.dart';
 import 'legacy_import_page.dart';
 import 'legacy_transport.dart';
 import 'review_pages.dart';
@@ -846,12 +849,12 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
                     title: switch (_searchScope) {
                       1 => '书架',
                       2 => '本地',
-                      _ => '轻小说文库',
+                      _ => '哔哩轻小说',
                     },
                     code: switch (_searchScope) {
                       1 => '02 / PERSONAL ARCHIVE',
                       2 => '03 / LOCAL ARCHIVE',
-                      _ => 'WENKU8 / READING ARCHIVE',
+                      _ => 'LINOVELIB / READING ARCHIVE',
                     },
                     brand: _searchScope == 0,
                   ),
@@ -1017,8 +1020,8 @@ class DiscoverPage extends StatelessWidget {
     children: [
       Expanded(
         child: const ArchiveMasthead(
-          title: '轻小说文库',
-          code: 'WENKU8 / READING ARCHIVE',
+          title: '哔哩轻小说',
+          code: 'LINOVELIB / READING ARCHIVE',
           brand: true,
         ),
       ),
@@ -1365,7 +1368,7 @@ class DiscoverPage extends StatelessWidget {
       );
 
   Future<void> _chooseSort(BuildContext context) async {
-    final features = WenkuFeaturesScope.maybeOf(context);
+    final publications = PublicationCatalogScope.maybeOf(context);
     final selected = await showJellySheet<DiscoverySelection>(
       context: context,
       reduceMotion: state.reduceMotion,
@@ -1375,9 +1378,8 @@ class DiscoverPage extends StatelessWidget {
         books: feed!.allItems,
         selectedTags: feed!.tags.toSet(),
         availableTags: feed!.tagSuggestions,
-        publicationCatalog: features?.publications,
+        publicationCatalog: publications,
         selectedPublication: feed!.publication,
-        preparePublications: features?.account.initialize,
         blockedTags: state.blockedTags,
         onBlockedTagsChanged: (tags) async {
           await state.setBlockedTags(tags);
@@ -1387,13 +1389,8 @@ class DiscoverPage extends StatelessWidget {
     );
     if (!context.mounted || selected == null) return;
     if (selected.publication case final publication?) {
-      if (features == null) return;
-      await features.account.initialize();
-      if (!context.mounted) return;
-      await feed!.selectPublication(
-        publication,
-        catalog: features.publications,
-      );
+      if (publications == null) return;
+      await feed!.selectPublication(publication, catalog: publications);
     }
     if (selected.sort case final sort?) await feed!.selectSort(sort);
     if (selected.tags case final tags?) await feed!.selectTags(tags);
@@ -2404,7 +2401,7 @@ class _ShelfPageState extends State<ShelfPage>
                   grid: grid,
                   gridDensity: state.shelfGridDensity,
                   onGridViewport: (v) => _gridViewport.value = v,
-                  leadingCount: 1 + previewRows,
+                  leadingCount: 1 + previewRows + (saved.isEmpty ? 1 : 0),
                   padding: EdgeInsets.fromLTRB(
                     24,
                     MediaQuery.paddingOf(context).top +
@@ -3997,8 +3994,31 @@ class InlineSearchResults extends StatelessWidget {
       return ContentNotice(
         icon: CupertinoIcons.search,
         title: feed.searchNotice == null ? '没有找到相关故事' : '部分搜索暂未完成',
-        message: feed.searchNotice ?? '试试更短的书名或作者名',
+        message:
+            feed.searchNotice ?? '试试更短的书名或作者名；新书可用「发现」分类浏览、按官网 ID 搜索，或到官网搜索。',
         onRetry: feed.searchNotice == null ? null : feed.refresh,
+        secondaryAction: feed.query.trim().isEmpty
+            ? null
+            : Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: GlassTextButton(
+                  key: const ValueKey('search-open-web'),
+                  onPressed: () async {
+                    final uri = Uri.https('cse.google.com', '/cse', {
+                      'cx': '649de34f5e63448cb',
+                      'q': feed.query,
+                    });
+                    final opened = await launchUrl(
+                      uri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                    if (!opened && context.mounted) {
+                      showNovelFeedback(context, '无法打开浏览器');
+                    }
+                  },
+                  child: const AppText('在官网搜索'),
+                ),
+              ),
       );
     }
     return NotificationListener<ScrollNotification>(
@@ -10166,19 +10186,31 @@ class _ReaderPageState extends State<ReaderPage>
     ),
   );
 
+  ({double left, double right}) _scrollMargins(
+    BuildContext context,
+    ReaderPreferences prefs,
+  ) => ReaderBookLayout.scrollMargins(
+    screenSize: MediaQuery.sizeOf(context),
+    safe: MediaQuery.viewPaddingOf(context),
+    leftMargin: prefs.leftMargin,
+    rightMargin: prefs.rightMargin,
+  );
+
   Widget _scrollHeading(
     int index,
     ReaderPreferences prefs,
     bool dark, {
     bool continuation = false,
     bool showTitle = true,
-  }) => Padding(
-    padding: EdgeInsets.fromLTRB(
-      prefs.leftMargin,
-      continuation ? 24 : 0,
-      prefs.rightMargin,
-      28,
-    ),
+  }) {
+    final margins = _scrollMargins(context, prefs);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        margins.left,
+        continuation ? 24 : 0,
+        margins.right,
+        28,
+      ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -10226,7 +10258,8 @@ class _ReaderPageState extends State<ReaderPage>
         ],
       ],
     ),
-  );
+    );
+  }
 
   Widget _scrollFailure(Object? error, VoidCallback retry) => Column(
     mainAxisSize: MainAxisSize.min,
@@ -10252,6 +10285,7 @@ class _ReaderPageState extends State<ReaderPage>
     TextStyle style,
   ) {
     final prefs = _readerPreferences, paragraphs = content.paragraphs;
+    final margins = _scrollMargins(context, prefs);
     final index = content.readingOrder?[row] ?? row;
     final registry = _scrollStream.registryFor(chapter)!;
     final cacheKey = (chapter, index, content, registry);
@@ -10277,8 +10311,8 @@ class _ReaderPageState extends State<ReaderPage>
           lineHeight: style.height ?? 1.72,
           width:
               MediaQuery.sizeOf(context).width -
-              prefs.leftMargin -
-              prefs.rightMargin,
+              margins.left -
+              margins.right,
           defaultGap: prefs.paragraphGap,
           overrideGap: prefs.paragraphGapOverride,
         ),
@@ -10324,8 +10358,8 @@ class _ReaderPageState extends State<ReaderPage>
     }
     final child = Padding(
       padding: EdgeInsets.only(
-        left: prefs.leftMargin,
-        right: prefs.rightMargin,
+        left: margins.left,
+        right: margins.right,
       ),
       child: content.inlineOwners.containsKey(index)
           ? body
@@ -10351,6 +10385,12 @@ class _ReaderPageState extends State<ReaderPage>
     Object? error,
   ) {
     final safe = MediaQuery.viewPaddingOf(context);
+    final margins = _scrollMargins(context, prefs);
+    final typography = ReaderBookLayout.bunkobonTypography(
+      MediaQuery.sizeOf(context),
+      fontSize: _fontSize,
+      lineHeight: _lineHeight,
+    );
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         if (notification.depth != 0) return false;
@@ -10429,8 +10469,9 @@ class _ReaderPageState extends State<ReaderPage>
                     SliverToBoxAdapter(
                       child: error == null
                           ? Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: prefs.leftMargin,
+                              padding: EdgeInsets.only(
+                                left: margins.left,
+                                right: margins.right,
                               ),
                               child: const ReaderSkeleton(),
                             )
@@ -10452,8 +10493,8 @@ class _ReaderPageState extends State<ReaderPage>
                   geometry: (
                     prefs.layoutKey,
                     _displaySpec,
-                    _fontSize,
-                    _lineHeight,
+                    typography.fontSize,
+                    typography.lineHeight,
                     _readerFontId,
                     _layoutWidth,
                     _layoutTextScale,
@@ -10482,9 +10523,11 @@ class _ReaderPageState extends State<ReaderPage>
                   load: _prepareDisplayContent,
                   onChapterChanged: _adoptScrollChapter,
                   pendingBuilder: (context, chapter, error, retry) => Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26,
-                      vertical: 12,
+                    padding: EdgeInsets.fromLTRB(
+                      margins.left,
+                      12,
+                      margins.right,
+                      12,
                     ),
                     child: error != null
                         ? _scrollFailure(error, retry)
@@ -10578,10 +10621,16 @@ class _ReaderPageState extends State<ReaderPage>
                   paragraph: anchor.paragraph,
                   offset: anchor.offset,
                 );
+            final typography = ReaderBookLayout.bunkobonTypography(
+              MediaQuery.sizeOf(context),
+              fontSize: _fontSize,
+              lineHeight: _lineHeight,
+            );
             _layoutKey =
                 _currentContent?.layoutKey(prefs.layoutKey) ?? prefs.layoutKey;
             _layoutTextScale =
-                MediaQuery.textScalerOf(context).scale(_fontSize) / _fontSize;
+                MediaQuery.textScalerOf(context).scale(typography.fontSize) /
+                typography.fontSize;
             // Scroll offsets are relative to the inset, clipped viewport, not the
             // status bar. Keep that band clear even after all glass is hidden.
             _readingInset = _scrollReadingInset(prefs);
@@ -10605,14 +10654,16 @@ class _ReaderPageState extends State<ReaderPage>
                 .merge(
                   TextStyle(
                     fontFamily: _readerFontFamily ?? 'Roboto',
-                    fontSize: _fontSize,
-                    height: _lineHeight,
+                    fontSize: typography.fontSize,
+                    height: typography.lineHeight,
                     letterSpacing: prefs.letterSpacing,
                     fontWeight: prefs.textWeight.weight,
                     color: prefs.foreground(dark),
                   ),
                 )
                 .copyWith(inherit: false);
+            final safe = MediaQuery.viewPaddingOf(context);
+            final scrollMargins = _scrollMargins(context, prefs);
             final rowSpec = (
               _contentGeneration,
               paragraphStyle,
@@ -10620,17 +10671,17 @@ class _ReaderPageState extends State<ReaderPage>
               prefs.justify,
               prefs.paragraphGap,
               prefs.paragraphGapOverride,
-              _fontSize,
+              typography.fontSize,
               _listening,
               _chapterRevealFirst,
               _illustrationsRefreshing,
               widget.state.reduceMotion,
+              scrollMargins,
             );
             if (_paragraphWidgetSpec != rowSpec) {
               _paragraphWidgetSpec = rowSpec;
               _paragraphWidgets.clear();
             }
-            final safe = MediaQuery.viewPaddingOf(context);
             // Fixed information rows keep their home-indicator clearance in
             // both chrome states; showing controls never changes this geometry.
             final pagedBottomInset = safe.bottom;

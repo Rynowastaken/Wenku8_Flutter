@@ -55,7 +55,7 @@ class OnlineBookHandoff {
     });
     _validateAnchor(content, normalized);
     return OnlineBookHandoff.fromJson({
-      'source': 'wenku8',
+      'source': 'linovelib',
       'bookId': book.id,
       'title': book.title,
       'chapterTitle': chapter.title,
@@ -73,7 +73,7 @@ class OnlineBookHandoff {
     final chapterTitle = raw['chapterTitle'];
     final coordinate = raw['position'];
     final digest = raw['contentDigest'];
-    if (raw['source'] != 'wenku8' ||
+    if (raw['source'] != 'linovelib' ||
         id is! int ||
         id <= 0 ||
         isLocalBook(id) ||
@@ -135,7 +135,7 @@ class OnlineBookHandoff {
   }
 
   Map<String, Object> toJson() => {
-    'source': 'wenku8',
+    'source': 'linovelib',
     'bookId': book.id,
     'title': book.title,
     'chapterTitle': chapterTitle,

@@ -7,13 +7,64 @@ import 'package:flutter/semantics.dart';
 /// One pagination width for both leaves, including off-centre hardware hinges.
 /// Rectangles are viewport-local; reading order is applied by ReaderBookSpread.
 class ReaderBookLayout {
-  const ReaderBookLayout._(this.viewport, this.pages, this.spine);
+  const ReaderBookLayout._(
+    this.viewport,
+    this.pages,
+    this.spine, {
+    this.isBunkobon = false,
+  });
+
+  /// Japanese Bunkobon (A6: 105 mm × 148 mm) text-block proportions on tablets.
+  static const double bunkobonAspectRatio = 105 / 148;
+  static const double maxBunkobonWidth = 510;
+  static const double maxBunkobonHeight =
+      maxBunkobonWidth / bunkobonAspectRatio;
+
+  static bool isTabletViewport(Size size) => size.shortestSide >= 560;
+
+  /// Compact Bunkobon font size and line height on tablet viewports (~15–17
+  /// columns × ~38–42 characters per page at default settings).
+  static ({double fontSize, double lineHeight}) bunkobonTypography(
+    Size screenSize, {
+    required double fontSize,
+    required double lineHeight,
+  }) {
+    if (!isTabletViewport(screenSize)) {
+      return (fontSize: fontSize, lineHeight: lineHeight);
+    }
+    return (
+      fontSize: (fontSize * .88).clamp(10.0, 27.0),
+      lineHeight: (lineHeight * .93).clamp(1.25, 2.2),
+    );
+  }
+
+  /// Horizontal margins that center scroll prose within Bunkobon width on tablets.
+  static ({double left, double right}) scrollMargins({
+    required Size screenSize,
+    required EdgeInsets safe,
+    required double leftMargin,
+    required double rightMargin,
+  }) {
+    if (!isTabletViewport(screenSize)) {
+      return (left: leftMargin, right: rightMargin);
+    }
+    final available = screenSize.width - safe.horizontal;
+    final body = math.max(
+      0.0,
+      math.min(available - leftMargin - rightMargin, maxBunkobonWidth),
+    );
+    final extra = math.max(0.0, available - leftMargin - rightMargin - body);
+    return (left: leftMargin + extra / 2, right: rightMargin + extra / 2);
+  }
+
   final Size viewport;
   final List<Rect> pages;
   final Rect? spine;
+  final bool isBunkobon;
   int get count => pages.length;
   Size get pageSize => pages.first.size;
-  Object get key => (viewport, pages.first, pages.last, count, spine);
+  Object get key =>
+      (viewport, pages.first, pages.last, count, spine, isBunkobon);
 
   /// Paper reaches the screen edges while pagination keeps its text rectangle.
   Rect frameFor(int index, EdgeInsets insets) {
@@ -74,6 +125,17 @@ class ReaderBookLayout {
               );
       }
     }
+    final isTablet =
+        hinge == null &&
+        math.min(area.width + margin * 2, area.height + 100) >= 580 &&
+        area.height >= 500;
+    Size bunkobonSize(double maxWidth, double maxHeight) {
+      var pageWidth = math.min(maxWidth, maxBunkobonWidth);
+      var pageHeight = math.min(maxHeight, pageWidth / bunkobonAspectRatio);
+      pageWidth = math.min(pageWidth, pageHeight * bunkobonAspectRatio);
+      return Size(pageWidth, pageHeight);
+    }
+
     final gutter = math.max(40.0, margin * 2);
     final leftEnd = hinge == null
         ? area.center.dx - gutter / 2
@@ -82,22 +144,39 @@ class ReaderBookLayout {
         ? area.center.dx + gutter / 2
         : hinge.right + margin;
     final width = math.min(leftEnd - area.left, area.right - rightStart);
-    if (area.width + margin * 2 >= 720 && area.height >= 220 && width >= 300) {
+    if ((hinge != null || area.width > area.height) &&
+        area.width + margin * 2 >= 720 &&
+        area.height >= 220 &&
+        width >= 300) {
+      final leaf = isTablet
+          ? bunkobonSize(width, math.max(220, area.height - 24))
+          : Size(width, area.height);
+      final leafTop = area.top + (area.height - leaf.height) / 2;
       return ReaderBookLayout._(
         viewport,
         [
-          Rect.fromLTWH(leftEnd - width, area.top, width, area.height),
-          Rect.fromLTWH(rightStart, area.top, width, area.height),
+          Rect.fromLTWH(leftEnd - leaf.width, leafTop, leaf.width, leaf.height),
+          Rect.fromLTWH(rightStart, leafTop, leaf.width, leaf.height),
         ],
         hinge == null
-            ? Rect.fromLTWH(area.center.dx - 12, area.top, 24, area.height)
+            ? Rect.fromLTWH(area.center.dx - 12, leafTop, 24, leaf.height)
             : null,
+        isBunkobon: isTablet,
       );
     }
     if (hinge != null) {
       area = leftEnd - area.left >= area.right - rightStart
           ? Rect.fromLTRB(area.left, area.top, leftEnd, area.bottom)
           : Rect.fromLTRB(rightStart, area.top, area.right, area.bottom);
+    } else if (isTablet) {
+      final page = bunkobonSize(area.width, math.max(220, area.height - 24));
+      area = Rect.fromLTWH(
+        area.left + (area.width - page.width) / 2,
+        area.top + (area.height - page.height) / 2,
+        page.width,
+        page.height,
+      );
+      return ReaderBookLayout._(viewport, [area], null, isBunkobon: true);
     }
     return ReaderBookLayout._(viewport, [area], null);
   }
@@ -130,6 +209,8 @@ class ReaderBookSpread extends StatelessWidget {
         Positioned.fromRect(
           rect: frameInsets == null
               ? spine
+              : layout.isBunkobon
+              ? spine.shift(Offset(frameInsets!.left, frameInsets!.top))
               : Rect.fromLTWH(
                   spine.left + frameInsets!.left,
                   0,
