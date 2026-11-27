@@ -22,20 +22,26 @@ class ReaderBookLayout {
 
   static bool isTabletViewport(Size size) => size.shortestSide >= 560;
 
-  /// Compact Bunkobon font size and line height on tablet viewports (~15–17
-  /// columns × ~38–42 characters per page at default settings).
+  /// Compact Bunkobon font size and line height on tablet and portrait mobile
+  /// viewports (~15 columns on tablets and compact phones at default settings).
   static ({double fontSize, double lineHeight}) bunkobonTypography(
     Size screenSize, {
     required double fontSize,
     required double lineHeight,
   }) {
-    if (!isTabletViewport(screenSize)) {
-      return (fontSize: fontSize, lineHeight: lineHeight);
+    if (isTabletViewport(screenSize)) {
+      return (
+        fontSize: (fontSize * .88).clamp(10.0, 27.0),
+        lineHeight: (lineHeight * .93).clamp(1.25, 2.2),
+      );
     }
-    return (
-      fontSize: (fontSize * .88).clamp(10.0, 27.0),
-      lineHeight: (lineHeight * .93).clamp(1.25, 2.2),
-    );
+    if (screenSize.height > screenSize.width && screenSize.height >= 500) {
+      return (
+        fontSize: (fontSize * .70).clamp(10.5, 22.0),
+        lineHeight: (lineHeight * .84).clamp(1.25, 2.0),
+      );
+    }
+    return (fontSize: fontSize, lineHeight: lineHeight);
   }
 
   /// Horizontal margins that center scroll prose within Bunkobon width on tablets.
@@ -168,8 +174,10 @@ class ReaderBookLayout {
       area = leftEnd - area.left >= area.right - rightStart
           ? Rect.fromLTRB(area.left, area.top, leftEnd, area.bottom)
           : Rect.fromLTRB(rightStart, area.top, area.right, area.bottom);
-    } else if (isTablet) {
-      final page = bunkobonSize(area.width, math.max(220, area.height - 24));
+    } else if (isTablet ||
+        (area.height > area.width && area.height >= 420 && area.width >= 260)) {
+      final maxWidth = isTablet ? area.width : math.max(240.0, area.width - 12);
+      final page = bunkobonSize(maxWidth, math.max(220, area.height - 24));
       area = Rect.fromLTWH(
         area.left + (area.width - page.width) / 2,
         area.top + (area.height - page.height) / 2,
