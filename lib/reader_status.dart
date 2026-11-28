@@ -34,19 +34,34 @@ class ReaderStatusFooter extends StatefulWidget {
   final double? fontSize;
   final bool statusBand;
   static const height = 24.0;
+  static const bandTopInset = 24.0;
+  static double minTopFor(BuildContext context) => math.max(
+    math.max(
+      MediaQuery.viewPaddingOf(context).top,
+      AppWindowInsets.viewPaddingOf(context).top,
+    ),
+    bandTopInset,
+  );
+  static double _contentHeightFor(BuildContext context, {double fontSize = 11}) =>
+      (MediaQuery.textScalerOf(context).scale(fontSize) * 1.4 + 8).clamp(
+        height,
+        double.infinity,
+      );
+
   // Reuse the cutout/status band, not another row below it. Time and battery
   // sit at opposite edges, leaving the camera/sensor area in the middle clear.
-  static double heightFor(BuildContext context, {double fontSize = 11}) =>
-      math.max(
-        math.max(
-          MediaQuery.viewPaddingOf(context).top,
-          AppWindowInsets.viewPaddingOf(context).top,
-        ),
-        (MediaQuery.textScalerOf(context).scale(fontSize) * 1.4 + 8).clamp(
-          height,
-          double.infinity,
-        ),
-      );
+  static double heightFor(
+    BuildContext context, {
+    double fontSize = 11,
+    bool includeTopInset = true,
+  }) => math.max(
+    math.max(
+      MediaQuery.viewPaddingOf(context).top,
+      AppWindowInsets.viewPaddingOf(context).top,
+    ),
+    _contentHeightFor(context, fontSize: fontSize) +
+        (includeTopInset ? bandTopInset : 0),
+  );
   static const events = EventChannel('org.mewx.wenku8/reader_status');
   // Incoming/outgoing sheets share one native subscription and the same data.
   static final _updates = events.receiveBroadcastStream();
@@ -166,63 +181,83 @@ class _ReaderStatusFooterState extends State<ReaderStatusFooter>
     final size = widget.fontSize ?? (widget.compact ? 13.0 : 11.0);
     final time =
         '${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}';
+    final bandHeight = ReaderStatusFooter.heightFor(context, fontSize: size);
+    final contentHeight = ReaderStatusFooter._contentHeightFor(
+      context,
+      fontSize: size,
+    );
+    final bandTopPadding = widget.statusBand
+        ? math.max(
+            ReaderStatusFooter.bandTopInset,
+            (bandHeight - contentHeight) / 2,
+          )
+        : 0.0;
+    final row = DefaultTextStyle.merge(
+      style: TextStyle(
+        fontSize: size,
+        height: widget.compact ? 1.4 : 1.3,
+        color: widget.ink ?? Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      child: Row(
+        children: [
+          if (widget.leading != null) ...[
+            if (widget.statusBand) ...[
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width * .36,
+                  ),
+                  child: widget.leading!,
+                ),
+              ),
+              const Spacer(),
+            ] else
+              Expanded(child: widget.leading!),
+            const SizedBox(width: 12),
+          ] else if (widget.timeAtEnd)
+            const Spacer(),
+          IgnorePointer(
+            child: AppText(time, key: const ValueKey('reader-status-time')),
+          ),
+          if (widget.leading == null && !widget.timeAtEnd) const Spacer(),
+          if (widget.showBattery && _charging)
+            const IgnorePointer(
+              child: ArchiveIcon(CupertinoIcons.bolt_fill, size: 11),
+            ),
+          if (widget.showBattery && _battery != null) ...[
+            if (widget.compact) const SizedBox(width: 8),
+            const IgnorePointer(
+              child: ArchiveIcon(CupertinoIcons.battery_100, size: 15),
+            ),
+            const SizedBox(width: 5),
+            IgnorePointer(
+              child: AppText(
+                '$_battery%',
+                key: const ValueKey('reader-status-battery'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
     return IgnorePointer(
       ignoring: !widget.interactiveLeading,
       child: SizedBox(
         key: const ValueKey('reader-system-footer'),
         height: widget.statusBand
-            ? ReaderStatusFooter.heightFor(context, fontSize: size)
+            ? bandHeight
             : widget.compact
             ? MediaQuery.textScalerOf(context).scale(size) * 1.4
-            : ReaderStatusFooter.heightFor(context, fontSize: size),
-        child: DefaultTextStyle.merge(
-          style: TextStyle(
-            fontSize: size,
-            height: widget.compact ? 1.4 : 1.3,
-            color: widget.ink ?? Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          child: Row(
-            children: [
-              if (widget.leading != null) ...[
-                if (widget.statusBand) ...[
-                  Flexible(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.sizeOf(context).width * .36,
-                      ),
-                      child: widget.leading!,
-                    ),
-                  ),
-                  const Spacer(),
-                ] else
-                  Expanded(child: widget.leading!),
-                const SizedBox(width: 12),
-              ] else if (widget.timeAtEnd)
-                const Spacer(),
-              IgnorePointer(
-                child: AppText(time, key: const ValueKey('reader-status-time')),
-              ),
-              if (widget.leading == null && !widget.timeAtEnd) const Spacer(),
-              if (widget.showBattery && _charging)
-                const IgnorePointer(
-                  child: ArchiveIcon(CupertinoIcons.bolt_fill, size: 11),
+            : bandHeight,
+        child: widget.statusBand
+            ? Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(top: bandTopPadding),
+                  child: SizedBox(height: contentHeight, child: row),
                 ),
-              if (widget.showBattery && _battery != null) ...[
-                if (widget.compact) const SizedBox(width: 8),
-                const IgnorePointer(
-                  child: ArchiveIcon(CupertinoIcons.battery_100, size: 15),
-                ),
-                const SizedBox(width: 5),
-                IgnorePointer(
-                  child: AppText(
-                    '$_battery%',
-                    key: const ValueKey('reader-status-battery'),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
+              )
+            : row,
       ),
     );
   }

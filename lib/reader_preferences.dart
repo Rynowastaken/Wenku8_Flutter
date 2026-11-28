@@ -315,7 +315,7 @@ class ReaderPreferences {
       ),
       statusSideInset: number('statusSideInset', 0, 96, 0),
       statusFontSize: number('statusFontSize', 9, 18, 12),
-      statusTopOffset: number('statusTopOffset', -8, 24, 0),
+      statusTopOffset: number('statusTopOffset', -12, 24, 0),
       backgroundImage: json['backgroundImage'] as String?,
       backgroundOpacity: number('backgroundOpacity', .05, 1, .18),
       backgroundFit: (json['backgroundFit'] ?? 'cover') == 'contain'

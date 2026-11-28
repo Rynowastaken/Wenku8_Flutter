@@ -43,10 +43,10 @@ Cross-platform Flutter light novel reader for **Linovelib (`tw.linovelib.com`)**
 
 | 架構 | 檔案 |
 | :-- | :-- |
-| ARM64 手機／平板（推薦） | `LinoBunko-v0.5.2-linovelib-arm64-v8a.apk` |
-| 32 位元 ARM | `LinoBunko-v0.5.2-linovelib-armeabi-v7a.apk` |
-| x86_64 模擬器／裝置 | `LinoBunko-v0.5.2-linovelib-x86_64.apk` |
-| 通用包 | `LinoBunko-v0.5.2-linovelib-universal.apk` |
+| ARM64 手機／平板（推薦） | `LinoBunko-v0.5.3-linovelib-arm64-v8a.apk` |
+| 32 位元 ARM | `LinoBunko-v0.5.3-linovelib-armeabi-v7a.apk` |
+| x86_64 模擬器／裝置 | `LinoBunko-v0.5.3-linovelib-x86_64.apk` |
+| 通用包 | `LinoBunko-v0.5.3-linovelib-universal.apk` |
 
 ```bash
 git clone https://github.com/Rynowastaken/LinoBunko.git && cd LinoBunko

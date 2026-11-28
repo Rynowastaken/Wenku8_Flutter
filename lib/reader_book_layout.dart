@@ -44,7 +44,8 @@ class ReaderBookLayout {
     return (fontSize: fontSize, lineHeight: lineHeight);
   }
 
-  /// Horizontal margins that center scroll prose within Bunkobon width on tablets.
+  /// Horizontal margins that center scroll prose within Bunkobon width on tablets
+  /// while preserving responsiveness to user left/right margin adjustments.
   static ({double left, double right}) scrollMargins({
     required Size screenSize,
     required EdgeInsets safe,
@@ -55,12 +56,17 @@ class ReaderBookLayout {
       return (left: leftMargin, right: rightMargin);
     }
     final available = screenSize.width - safe.horizontal;
-    final body = math.max(
-      0.0,
-      math.min(available - leftMargin - rightMargin, maxBunkobonWidth),
+    final column = math.min(available, maxBunkobonWidth + 52);
+    final extra = math.max(0.0, available - column);
+    final maxTotalMargin = math.max(0.0, column - 180);
+    final total = leftMargin + rightMargin;
+    final scale = total > maxTotalMargin && total > 0
+        ? maxTotalMargin / total
+        : 1.0;
+    return (
+      left: leftMargin * scale + extra / 2,
+      right: rightMargin * scale + extra / 2,
     );
-    final extra = math.max(0.0, available - leftMargin - rightMargin - body);
-    return (left: leftMargin + extra / 2, right: rightMargin + extra / 2);
   }
 
   final Size viewport;
@@ -86,10 +92,13 @@ class ReaderBookLayout {
   factory ReaderBookLayout.resolve({
     required Size viewport,
     required double margin,
+    EdgeInsets? marginInsets,
     List<DisplayFeature> features = const [],
     Offset origin = Offset.zero,
   }) {
     var area = Offset.zero & viewport;
+    final resolvedMargins =
+        marginInsets ?? EdgeInsets.symmetric(horizontal: margin, vertical: 8);
     Rect? hinge;
     for (final feature in features) {
       if (feature.type != DisplayFeatureType.hinge &&
@@ -142,6 +151,16 @@ class ReaderBookLayout {
       return Size(pageWidth, pageHeight);
     }
 
+    double insetSpan(double available, double slack) => math.max(
+      math.min(available, 200.0),
+      math.min(available, available - slack),
+    );
+
+    final dH = resolvedMargins.horizontal - 52;
+    final dV = resolvedMargins.vertical - 16;
+    final baseW = math.max(1.0, area.width + dH);
+    final baseH = math.max(1.0, area.height + dV);
+
     final gutter = math.max(40.0, margin * 2);
     final leftEnd = hinge == null
         ? area.center.dx - gutter / 2
@@ -154,10 +173,26 @@ class ReaderBookLayout {
         area.width + margin * 2 >= 720 &&
         area.height >= 220 &&
         width >= 300) {
-      final leaf = isTablet
-          ? bunkobonSize(width, math.max(220, area.height - 24))
-          : Size(width, area.height);
-      final leafTop = area.top + (area.height - leaf.height) / 2;
+      late final Size leaf;
+      late final double leafTop;
+      if (isTablet) {
+        final baseLeafWidth = math.max(1.0, (baseW - 52.0) / 2);
+        final baseLeaf = bunkobonSize(
+          baseLeafWidth,
+          math.max(220, baseH - 24),
+        );
+        final slackX = math.max(0.0, baseLeafWidth - baseLeaf.width);
+        final slackY = math.max(0.0, baseH - baseLeaf.height);
+        leaf = Size(
+          insetSpan(width, slackX),
+          insetSpan(area.height, slackY),
+        );
+        leafTop =
+            area.top + (area.height - leaf.height).clamp(0.0, slackY) / 2;
+      } else {
+        leaf = Size(width, area.height);
+        leafTop = area.top + (area.height - leaf.height) / 2;
+      }
       return ReaderBookLayout._(
         viewport,
         [
@@ -176,13 +211,22 @@ class ReaderBookLayout {
           : Rect.fromLTRB(rightStart, area.top, area.right, area.bottom);
     } else if (isTablet ||
         (area.height > area.width && area.height >= 420 && area.width >= 260)) {
-      final maxWidth = isTablet ? area.width : math.max(240.0, area.width - 12);
-      final page = bunkobonSize(maxWidth, math.max(220, area.height - 24));
+      final baseMaxWidth = isTablet
+          ? baseW
+          : math.max(240.0, baseW - 12);
+      final basePage = bunkobonSize(
+        baseMaxWidth,
+        math.max(220, baseH - 24),
+      );
+      final slackX = math.max(0.0, baseW - basePage.width);
+      final slackY = math.max(0.0, baseH - basePage.height);
+      final targetWidth = insetSpan(area.width, slackX);
+      final targetHeight = insetSpan(area.height, slackY);
       area = Rect.fromLTWH(
-        area.left + (area.width - page.width) / 2,
-        area.top + (area.height - page.height) / 2,
-        page.width,
-        page.height,
+        area.left + (area.width - targetWidth).clamp(0.0, slackX) / 2,
+        area.top + (area.height - targetHeight).clamp(0.0, slackY) / 2,
+        targetWidth,
+        targetHeight,
       );
       return ReaderBookLayout._(viewport, [area], null, isBunkobon: true);
     }

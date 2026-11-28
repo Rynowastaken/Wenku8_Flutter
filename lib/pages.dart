@@ -8169,10 +8169,21 @@ class _ReaderPageState extends State<ReaderPage>
           AppWindowInsets.viewPaddingOf(context).top,
         );
 
-  double _chromeStatusInset(BuildContext context) => _hideSystemStatus
-      ? (_systemStatusExtent(context) - MediaQuery.viewPaddingOf(context).top)
-            .clamp(0.0, double.infinity)
-      : 0;
+  double _chromeStatusInset(BuildContext context) {
+    if (!_hideSystemStatus) return 0;
+    final extent = _showStatusInfo
+        ? ReaderStatusFooter.heightFor(
+                context,
+                fontSize: _readerPreferences.statusFontSize,
+                includeTopInset: false,
+              ) +
+              math.max(0, _readerPreferences.statusTopOffset)
+        : _systemStatusExtent(context);
+    return (extent - MediaQuery.viewPaddingOf(context).top).clamp(
+      0.0,
+      double.infinity,
+    );
+  }
 
   double _readerHeaderTop(BuildContext context) {
     final safe = MediaQuery.viewPaddingOf(context).top;

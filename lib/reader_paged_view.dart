@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'app_ui.dart';
 import 'library_state.dart';
@@ -481,6 +482,12 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
               .clamp(1, double.infinity),
         ),
         margin: widget.preferences.bindingMargin,
+        marginInsets: EdgeInsets.fromLTRB(
+          widget.preferences.leftMargin,
+          widget.preferences.marginTop,
+          widget.preferences.rightMargin,
+          widget.preferences.marginBottom,
+        ),
         features: MediaQuery.displayFeaturesOf(context),
         origin: widget.bookTitle != null
             ? Offset(widget.padding.left, widget.padding.top)
@@ -1565,11 +1572,30 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
               Positioned(
                 top: widget.bookTitle == null
                     ? padding.top
+                    : bunkobonBounds != null
+                    ? math.max(
+                        ReaderStatusFooter.minTopFor(context),
+                        bunkobonBounds.top -
+                            30.0 +
+                            widget.preferences.statusTopOffset,
+                      )
                     : widget.preferences.statusTopOffset,
-                left: padding.left > statusInsets.left
+                left: bunkobonBounds != null && widget.bookTitle != null
+                    ? math.min(
+                        bunkobonBounds.left +
+                            widget.preferences.statusSideInset,
+                        bunkobonBounds.right - 96,
+                      ).clamp(0.0, _frameSize.width)
+                    : padding.left > statusInsets.left
                     ? padding.left
                     : statusInsets.left,
-                right: padding.right > statusInsets.right
+                right: bunkobonBounds != null && widget.bookTitle != null
+                    ? math.min(
+                        (_frameSize.width - bunkobonBounds.right) +
+                            widget.preferences.statusSideInset,
+                        _frameSize.width - bunkobonBounds.left - 96,
+                      ).clamp(0.0, _frameSize.width)
+                    : padding.right > statusInsets.right
                     ? padding.right
                     : statusInsets.right,
                 child: part(
@@ -1578,7 +1604,7 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
                         ? ReaderStatusFooter(
                             key: key('reader-chapter-location'),
                             compact: true,
-                            statusBand: true,
+                            statusBand: bunkobonBounds == null,
                             fontSize: widget.preferences.statusFontSize,
                             timeAtEnd: false,
                             showBattery: widget.preferences.hideSystemStatus,

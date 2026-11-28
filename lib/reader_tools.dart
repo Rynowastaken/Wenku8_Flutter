@@ -1906,9 +1906,9 @@ class _ReaderToolsState extends State<ReaderTools>
                         sliderKey: const ValueKey('reader-status-top-offset'),
                         label: '阅读信息上下位置',
                         value: prefs.statusTopOffset,
-                        min: -8,
+                        min: -12,
                         max: 24,
-                        divisions: 32,
+                        divisions: 36,
                         format: (v) => v == 0
                             ? '居中'
                             : '${v > 0 ? '下移' : '上移'} ${v.abs().round()}',
